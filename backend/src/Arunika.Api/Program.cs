@@ -1,4 +1,6 @@
 using Arunika.Infrastructure;
+using Arunika.Infrastructure.BackgroundJobs;
+using Hangfire;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -28,6 +30,8 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    // TODO(V2): gate behind auth (IDashboardAuthorizationFilter) before exposing outside Development.
+    app.UseHangfireDashboard("/hangfire");
 }
 
 app.UseSerilogRequestLogging();
@@ -40,5 +44,10 @@ app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
     .WithName("HealthCheck");
+
+RecurringJob.AddOrUpdate<FetchNewsJob>(
+    "fetch-news",
+    job => job.RunAsync(CancellationToken.None),
+    "*/15 * * * *");
 
 app.Run();

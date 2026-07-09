@@ -3,6 +3,7 @@ using System;
 using Arunika.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Arunika.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ArunikaDbContext))]
-    partial class ArunikaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260709134732_SeedFinancialModelingPrepSource")]
+    partial class SeedFinancialModelingPrepSource
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -324,15 +327,6 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                             Name = "Financial Modeling Prep",
                             SourceType = "Api",
                             TrustScore = 80
-                        },
-                        new
-                        {
-                            Id = new Guid("33333333-0000-0000-0000-000000000002"),
-                            BaseUrl = "https://www.cnbc.com",
-                            IsActive = true,
-                            Name = "CNBC",
-                            SourceType = "Rss",
-                            TrustScore = 75
                         });
                 });
 

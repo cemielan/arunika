@@ -1,4 +1,11 @@
+using Arunika.Application.Abstractions;
+using Arunika.Infrastructure.BackgroundJobs;
+using Arunika.Infrastructure.News.FinancialModelingPrep;
+using Arunika.Infrastructure.News.Rss;
 using Arunika.Infrastructure.Persistence;
+using Arunika.Infrastructure.Persistence.Repositories;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +20,25 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Missing connection string 'DefaultConnection'.");
 
         services.AddDbContext<ArunikaDbContext>(options => options.UseNpgsql(connectionString));
+
+        services.AddScoped<IArticleRepository, ArticleRepository>();
+        services.AddScoped<INewsSourceRepository, NewsSourceRepository>();
+
+        services.Configure<FinancialModelingPrepOptions>(configuration.GetSection(FinancialModelingPrepOptions.SectionName));
+        services.AddHttpClient<INewsFetcher, FinancialModelingPrepNewsFetcher>((sp, client) =>
+        {
+            var baseUrl = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FinancialModelingPrepOptions>>().Value.BaseUrl;
+            client.BaseAddress = new Uri(baseUrl);
+        });
+        services.AddHttpClient<INewsFetcher, CnbcRssNewsFetcher>();
+
+        services.AddScoped<FetchNewsJob>();
+
+        services.AddHangfire(hangfire => hangfire
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UsePostgreSqlStorage(pg => pg.UseNpgsqlConnection(connectionString)));
+        services.AddHangfireServer();
 
         return services;
     }
