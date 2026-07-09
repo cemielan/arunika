@@ -1,6 +1,7 @@
 using Arunika.Application.Abstractions;
 using Arunika.Application.Services;
 using Arunika.Domain.Entities;
+using Hangfire;
 using Microsoft.Extensions.Logging;
 
 namespace Arunika.Infrastructure.BackgroundJobs;
@@ -46,6 +47,7 @@ public class FetchNewsJob(
 
         var fetched = await fetcher.FetchAsync(cancellationToken);
         var savedCount = 0;
+        var newArticleIds = new List<Guid>();
 
         foreach (var item in fetched)
         {
@@ -56,6 +58,14 @@ public class FetchNewsJob(
             }
 
             var now = DateTimeOffset.UtcNow;
+            var dedupeHash = DedupeHasher.ComputeHash(item.Title, fetcher.SourceName);
+
+            // Dedup before enrichment (design doc §3/§6): cheap exact-hash check
+            // first, then a title-similarity check, both scoped to the last 48h
+            // since wire stories are commonly republished within that window.
+            var duplicateOf = await articleRepository.FindDuplicateAsync(
+                dedupeHash, item.Title, now.AddHours(-48), cancellationToken);
+
             var article = new Article
             {
                 Id = Guid.NewGuid(),
@@ -65,8 +75,19 @@ public class FetchNewsJob(
                 RawContent = item.RawContent,
                 PublishedAt = item.PublishedAt,
                 FetchedAt = now,
-                DedupeHash = DedupeHasher.ComputeHash(item.Title, fetcher.SourceName)
+                DedupeHash = dedupeHash,
+                DuplicateOfId = duplicateOf?.Id
             };
+
+            if (duplicateOf is not null)
+            {
+                logger.LogInformation("{Source}: '{Title}' marked as duplicate of {DuplicateOfId}, skipping enrichment.",
+                    fetcher.SourceName, item.Title, duplicateOf.Id);
+            }
+            else
+            {
+                newArticleIds.Add(article.Id);
+            }
 
             await articleRepository.AddAsync(article, cancellationToken);
             savedCount++;
@@ -75,5 +96,13 @@ public class FetchNewsJob(
         await articleRepository.SaveChangesAsync(cancellationToken);
         logger.LogInformation("{Source}: fetched {FetchedCount}, saved {SavedCount} new article(s).",
             fetcher.SourceName, fetched.Count, savedCount);
+
+        // Enqueue enrichment only after the transaction commits, so the Hangfire
+        // job (which may run almost immediately) can always find the row (design
+        // doc §5/§8: EnrichArticleJob fires per unique article).
+        foreach (var articleId in newArticleIds)
+        {
+            BackgroundJob.Enqueue<EnrichArticleJob>(job => job.RunAsync(articleId, CancellationToken.None));
+        }
     }
 }

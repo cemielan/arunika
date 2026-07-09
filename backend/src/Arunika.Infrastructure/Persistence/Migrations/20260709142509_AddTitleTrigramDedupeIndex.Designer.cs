@@ -3,6 +3,7 @@ using System;
 using Arunika.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Arunika.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ArunikaDbContext))]
-    partial class ArunikaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260709142509_AddTitleTrigramDedupeIndex")]
+    partial class AddTitleTrigramDedupeIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -36,11 +39,6 @@ namespace Arunika.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("DuplicateOfId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("EnrichmentStatus")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTimeOffset>("FetchedAt")
                         .HasColumnType("timestamp with time zone");

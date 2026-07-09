@@ -18,7 +18,8 @@ public record ArticleAnalysisResult(
     int ImpactScore,
     string? ImpactRationale,
     IReadOnlyList<SectorImpactResult> Sectors,
-    IReadOnlyList<string> Keywords
+    IReadOnlyList<string> Keywords,
+    string ModelVersion
 );
 
 /// <summary>

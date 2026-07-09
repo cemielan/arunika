@@ -18,6 +18,9 @@ public class ArunikaDbContext(DbContextOptions<ArunikaDbContext> options) : DbCo
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Required for EF.Functions.TrigramsSimilarity, used by ArticleRepository's
+        // near-duplicate title check (design doc §6, Phase 4).
+        modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ArunikaDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

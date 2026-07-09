@@ -1,3 +1,5 @@
+using Arunika.Domain.Enums;
+
 namespace Arunika.Domain.Entities;
 
 public class Article
@@ -11,6 +13,7 @@ public class Article
     public DateTimeOffset FetchedAt { get; set; }
     public required string DedupeHash { get; set; }
     public Guid? DuplicateOfId { get; set; }
+    public EnrichmentStatus EnrichmentStatus { get; set; } = EnrichmentStatus.Pending;
 
     public NewsSource? Source { get; set; }
     public Article? DuplicateOf { get; set; }

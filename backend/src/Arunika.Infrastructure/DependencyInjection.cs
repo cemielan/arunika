@@ -1,4 +1,5 @@
 using Arunika.Application.Abstractions;
+using Arunika.Infrastructure.AI;
 using Arunika.Infrastructure.BackgroundJobs;
 using Arunika.Infrastructure.News.FinancialModelingPrep;
 using Arunika.Infrastructure.News.Rss;
@@ -23,6 +24,10 @@ public static class DependencyInjection
 
         services.AddScoped<IArticleRepository, ArticleRepository>();
         services.AddScoped<INewsSourceRepository, NewsSourceRepository>();
+        services.AddScoped<IArticleAnalysisRepository, ArticleAnalysisRepository>();
+
+        services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
+        services.AddScoped<IAiEnrichmentService, GeminiAiEnrichmentService>();
 
         services.Configure<FinancialModelingPrepOptions>(configuration.GetSection(FinancialModelingPrepOptions.SectionName));
         services.AddHttpClient<INewsFetcher, FinancialModelingPrepNewsFetcher>((sp, client) =>
@@ -33,6 +38,7 @@ public static class DependencyInjection
         services.AddHttpClient<INewsFetcher, CnbcRssNewsFetcher>();
 
         services.AddScoped<FetchNewsJob>();
+        services.AddScoped<EnrichArticleJob>();
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()
