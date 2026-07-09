@@ -398,6 +398,12 @@ MSBuild_Logs/
 # BeatPulse healthcheck temp database
 healthchecksdb
 
+# Arunika — private planning docs (kept local only, not pushed to the repo)
+/Arunika.md
+/Arunika-Application-Design.md
+/Arunika-Project-Todo-List.md
+/arunika_system_architecture.png
+
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
 
