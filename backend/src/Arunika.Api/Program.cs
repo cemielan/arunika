@@ -1,6 +1,10 @@
+using System.Reflection;
+using Arunika.Api.Contracts;
+using Arunika.Api.Middleware;
 using Arunika.Infrastructure;
 using Arunika.Infrastructure.BackgroundJobs;
 using Hangfire;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -19,11 +23,38 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 // Add services to the container.
 
 builder.Services.AddControllers();
+
+// Standardize the 400 (invalid model state) response shape to match the
+// design doc §7 error envelope, same as the 404/500 shapes below.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var message = string.Join(" ", context.ModelState.Values
+            .SelectMany(entry => entry.Errors)
+            .Select(error => error.ErrorMessage));
+        var envelope = new ApiErrorEnvelope(new ApiErrorDetail(
+            "VALIDATION_ERROR",
+            string.IsNullOrWhiteSpace(message) ? "Invalid request." : message));
+        return new BadRequestObjectResult(envelope);
+    };
+});
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -51,3 +82,6 @@ RecurringJob.AddOrUpdate<FetchNewsJob>(
     "*/15 * * * *");
 
 app.Run();
+
+// Exposed so Arunika.IntegrationTests can boot this app via WebApplicationFactory<Program>.
+public partial class Program;

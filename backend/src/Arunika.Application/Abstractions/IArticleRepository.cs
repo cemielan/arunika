@@ -21,4 +21,32 @@ public interface IArticleRepository
     Task AddAsync(Article article, CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6 (design doc §7) — <c>GET /v1/news</c>. Non-duplicate articles,
+    /// newest first, optionally filtered by category name. Includes the
+    /// source and analysis/category needed to render the list without extra
+    /// round-trips.
+    /// </summary>
+    Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(string? category, int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6 — <c>GET /v1/articles/{id}</c>. Loads everything needed for
+    /// the full detail view: source, analysis/category, sector impacts, and
+    /// keywords. Returns null when no article with that id exists.
+    /// </summary>
+    Task<Article?> GetDetailByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Other articles that were linked as duplicates of <paramref name="canonicalArticleId"/>
+    /// — used to surface "also reported by" coverage on the article detail view.
+    /// </summary>
+    Task<IReadOnlyList<Article>> GetDuplicatesOfAsync(Guid canonicalArticleId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6 — <c>GET /v1/briefing</c> (simple version per the to-do list:
+    /// top N non-duplicate, enriched articles by impact score for the given
+    /// date — no generated executive summary yet).
+    /// </summary>
+    Task<IReadOnlyList<Article>> GetTopByImpactScoreAsync(DateOnly date, int take, CancellationToken cancellationToken = default);
 }

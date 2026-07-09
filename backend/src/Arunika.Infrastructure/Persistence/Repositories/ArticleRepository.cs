@@ -36,4 +36,63 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => dbContext.SaveChangesAsync(cancellationToken);
+
+    public async Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(string? category, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Articles
+            .Where(a => a.DuplicateOfId == null)
+            .Include(a => a.Source)
+            .Include(a => a.Analysis!)
+                .ThenInclude(analysis => analysis.Category)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            query = query.Where(a => a.Analysis != null && a.Analysis.Category != null && a.Analysis.Category.Name == category);
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(a => a.PublishedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalItems);
+    }
+
+    public Task<Article?> GetDetailByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => dbContext.Articles
+            .Include(a => a.Source)
+            .Include(a => a.Analysis!)
+                .ThenInclude(analysis => analysis.Category)
+            .Include(a => a.SectorImpacts)
+                .ThenInclude(impact => impact.Sector)
+            .Include(a => a.Keywords)
+                .ThenInclude(articleKeyword => articleKeyword.Keyword)
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Article>> GetDuplicatesOfAsync(Guid canonicalArticleId, CancellationToken cancellationToken = default)
+        => await dbContext.Articles
+            .Where(a => a.DuplicateOfId == canonicalArticleId)
+            .Include(a => a.Source)
+            .OrderByDescending(a => a.PublishedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Article>> GetTopByImpactScoreAsync(DateOnly date, int take, CancellationToken cancellationToken = default)
+    {
+        var startOfDay = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var endOfDay = startOfDay.AddDays(1);
+
+        return await dbContext.Articles
+            .Where(a => a.DuplicateOfId == null && a.Analysis != null)
+            .Where(a => a.PublishedAt >= startOfDay && a.PublishedAt < endOfDay)
+            .Include(a => a.Analysis)
+            .Include(a => a.SectorImpacts)
+                .ThenInclude(impact => impact.Sector)
+            .OrderByDescending(a => a.Analysis!.ImpactScore)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
 }
