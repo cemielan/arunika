@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Arunika.Api/Arunika.Api.csproj" />
+    <Project Path="src/Arunika.Application/Arunika.Application.csproj" />
+    <Project Path="src/Arunika.Domain/Arunika.Domain.csproj" />
+    <Project Path="src/Arunika.Infrastructure/Arunika.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Arunika.IntegrationTests/Arunika.IntegrationTests.csproj" />
+    <Project Path="tests/Arunika.UnitTests/Arunika.UnitTests.csproj" />
+  </Folder>
+</Solution>
