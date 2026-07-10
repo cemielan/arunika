@@ -1,0 +1,87 @@
+# Phase 8 (design doc §8/§13, to-do list Phase 8): deploy to staging on every
+# merge to `main`, deploy to production on a tagged GitHub release.
+#
+# Chosen hosts (not Azure — see repo memory / design doc §16 "open decisions"):
+#   - Frontend (Next.js):        Vercel
+#   - Backend (ASP.NET Core API, Postgres, Redis): Render
+#
+# Required repository/environment secrets before this workflow can actually
+# deploy anything (until then, each job logs a warning and skips its deploy
+# step rather than failing the run):
+#   - VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+#     (Vercel dashboard -> Account Settings -> Tokens, and Project Settings -> General)
+#   - RENDER_DEPLOY_HOOK_STAGING, RENDER_DEPLOY_HOOK_PRODUCTION
+#     (Render dashboard -> service -> Settings -> Deploy Hook, one per environment/service)
+#
+# Configure two GitHub Environments named "staging" and "production" and store
+# the corresponding secrets there so each job only has access to the secrets
+# for the environment it's deploying to.
+
+name: CD
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  deploy-frontend:
+    name: Deploy frontend (Vercel)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'release' && 'production' || 'staging' }}
+    defaults:
+      run:
+        working-directory: frontend/arunika-dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Vercel secrets are configured
+        id: check
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ] || [ -z "${{ secrets.VERCEL_ORG_ID }}" ] || [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Vercel secrets are not configured yet — skipping frontend deploy."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Vercel CLI
+        if: steps.check.outputs.skip == 'false'
+        run: npm install -g vercel
+
+      - name: Pull Vercel project settings
+        if: steps.check.outputs.skip == 'false'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=${{ github.event_name == 'release' && 'production' || 'preview' }} --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build
+        if: steps.check.outputs.skip == 'false'
+        run: vercel build ${{ github.event_name == 'release' && '--prod' || '' }} --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy
+        if: steps.check.outputs.skip == 'false'
+        run: vercel deploy --prebuilt ${{ github.event_name == 'release' && '--prod' || '' }} --token="${{ secrets.VERCEL_TOKEN }}"
+
+  deploy-backend:
+    name: Deploy backend (Render)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'release' && 'production' || 'staging' }}
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          DEPLOY_HOOK: ${{ github.event_name == 'release' && secrets.RENDER_DEPLOY_HOOK_PRODUCTION || secrets.RENDER_DEPLOY_HOOK_STAGING }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::warning::Render deploy hook secret is not configured yet for this environment — skipping backend deploy."
+            exit 0
+          fi
+          curl -fsS -X POST "$DEPLOY_HOOK"

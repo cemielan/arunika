@@ -61,6 +61,15 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
           No articles found.
+          {page > 1 && (
+            <>
+              {" "}
+              <Link href={buildHref(category, 1)} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                Back to page 1
+              </Link>
+              .
+            </>
+          )}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
