@@ -58,7 +58,7 @@ public class FakeArticleRepository : IArticleRepository
             SentimentConfidence = 0.8f,
             ImpactScore = 82,
             ImpactRationale = "High market significance due to rate policy implications.",
-            ModelVersion = "gemini-2.5-flash",
+            ModelVersion = "gemini-3.1-flash-lite",
             GeneratedAt = now.AddHours(-1)
         };
         marketsArticle.SectorImpacts.Add(new ArticleSectorImpact
@@ -95,7 +95,7 @@ public class FakeArticleRepository : IArticleRepository
             SentimentConfidence = 0.9f,
             ImpactScore = 65,
             ImpactRationale = "Moderate significance for the technology sector.",
-            ModelVersion = "gemini-2.5-flash",
+            ModelVersion = "gemini-3.1-flash-lite",
             GeneratedAt = now.AddHours(-2)
         };
         techArticle.SectorImpacts.Add(new ArticleSectorImpact
