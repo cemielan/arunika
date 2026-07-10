@@ -1,49 +1,64 @@
+import { Chip } from "@heroui/react";
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
+import type { ComponentType } from "react";
+
+type SentimentMeta = {
+  label: string;
+  color: "success" | "danger" | "default";
+  Icon: ComponentType<{ className?: string }>;
+};
+
+/** Shared legend so every sentiment surface (badges, market pulse, stat cards) stays in sync. */
+export const SENTIMENT_META: Record<"Bullish" | "Bearish" | "Neutral", SentimentMeta> = {
+  Bullish: { label: "Bullish", color: "success", Icon: TrendingUp },
+  Bearish: { label: "Bearish", color: "danger", Icon: TrendingDown },
+  Neutral: { label: "Neutral", color: "default", Icon: Minus },
+};
+
+function resolveSentimentMeta(sentiment: string | null): SentimentMeta | null {
+  if (!sentiment) return null;
+  if (sentiment === "Bullish" || sentiment === "Bearish" || sentiment === "Neutral") {
+    return SENTIMENT_META[sentiment];
+  }
+  return null;
+}
+
 export function SentimentBadge({ sentiment }: { sentiment: string | null }) {
-  if (!sentiment) {
+  const meta = resolveSentimentMeta(sentiment);
+
+  if (!meta) {
     return (
-      <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+      <Chip color="default" variant="soft" size="sm">
         Pending
-      </span>
+      </Chip>
     );
   }
 
-  const styles: Record<string, string> = {
-    Bullish: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-    Bearish: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
-    Neutral: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  };
+  const { Icon } = meta;
 
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        styles[sentiment] ?? styles.Neutral
-      }`}
-    >
-      {sentiment}
-    </span>
+    <Chip color={meta.color} variant="soft" size="sm" className="gap-1">
+      <Icon className="size-3" />
+      <Chip.Label>{meta.label}</Chip.Label>
+    </Chip>
   );
 }
 
 export function ImpactBadge({ score }: { score: number | null }) {
   if (score === null) {
     return (
-      <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+      <Chip color="default" variant="soft" size="sm">
         Impact —
-      </span>
+      </Chip>
     );
   }
 
-  let color = "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
-  if (score >= 70) {
-    color = "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
-  } else if (score >= 40) {
-    color = "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
-  }
+  const color = score >= 70 ? "danger" : score >= 40 ? "warning" : "default";
 
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${color}`}>
+    <Chip color={color} variant="soft" size="sm">
       Impact {score}
-    </span>
+    </Chip>
   );
 }
 
@@ -52,15 +67,9 @@ export function CategoryBadge({ category }: { category: string | null }) {
     return null;
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+    <Chip color="accent" variant="soft" size="sm">
       {category}
-    </span>
+    </Chip>
   );
 }
 
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}

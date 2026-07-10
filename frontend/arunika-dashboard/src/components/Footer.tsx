@@ -1,12 +1,15 @@
+import { Separator, Typography } from "@heroui/react";
+
 export function Footer() {
   return (
-    <footer className="border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto max-w-5xl px-6 py-6 text-xs text-zinc-500 dark:text-zinc-400">
-        <p>
+    <footer className="mt-auto">
+      <Separator />
+      <div className="mx-auto max-w-6xl px-6 py-6">
+        <Typography.Paragraph size="xs" color="muted">
           Arunika content — summaries, sentiment, and impact scores — is generated
           for informational purposes only and does not constitute financial or
           investment advice.
-        </p>
+        </Typography.Paragraph>
       </div>
     </footer>
   );

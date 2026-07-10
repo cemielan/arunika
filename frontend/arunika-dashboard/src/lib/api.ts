@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5097";
 
 export type ApiErrorEnvelope = { error: { code: string; message: string } };
 
@@ -143,4 +143,64 @@ export async function getArticleDetail(id: string): Promise<ArticleDetail | null
     return null;
   }
   return result.data;
+}
+
+export type MarketSentiment = "Bullish" | "Bearish" | "Neutral";
+
+export type MarketPulse = {
+  /** Overall conclusion derived from the most recent batch of articles. */
+  sentiment: MarketSentiment;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+  totalArticles: number;
+  /** Average impact score (0-100) across articles that have one. */
+  averageImpact: number;
+  /** Share of the dominant sentiment among all sampled articles, 0-100. */
+  confidence: number;
+};
+
+/**
+ * Aggregates sentiment across the most recent news items to produce a single
+ * "today's conclusion" (Bullish / Bearish / Neutral) for the dashboard summary.
+ */
+export async function getMarketPulse(): Promise<MarketPulse> {
+  const { items } = await getNewsFeed({ pageSize: 50 });
+
+  let bullishCount = 0;
+  let bearishCount = 0;
+  let neutralCount = 0;
+  let impactSum = 0;
+  let impactCount = 0;
+
+  for (const item of items) {
+    if (item.sentiment === "Bullish") bullishCount += 1;
+    else if (item.sentiment === "Bearish") bearishCount += 1;
+    else neutralCount += 1;
+
+    if (item.impactScore !== null) {
+      impactSum += item.impactScore;
+      impactCount += 1;
+    }
+  }
+
+  const totalArticles = items.length;
+  const averageImpact = impactCount > 0 ? Math.round(impactSum / impactCount) : 0;
+
+  let sentiment: MarketSentiment = "Neutral";
+  if (bullishCount > bearishCount && bullishCount > neutralCount) sentiment = "Bullish";
+  else if (bearishCount > bullishCount && bearishCount > neutralCount) sentiment = "Bearish";
+
+  const dominantCount = Math.max(bullishCount, bearishCount, neutralCount);
+  const confidence = totalArticles > 0 ? Math.round((dominantCount / totalArticles) * 100) : 0;
+
+  return {
+    sentiment,
+    bullishCount,
+    bearishCount,
+    neutralCount,
+    totalArticles,
+    averageImpact,
+    confidence,
+  };
 }

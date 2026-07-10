@@ -39,6 +39,7 @@ In `backend/src/Arunika.Api`, set required user-secrets:
 cd src\Arunika.Api
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=arunika;Username=arunika;Password=devpassword"
 dotnet user-secrets set "Gemini:ApiKey" "<your-gemini-api-key>"
+dotnet user-secrets set "FinancialModelingPrep:ApiKey" "<your-financialmodelingprep-api-key>"
 cd ..\..
 ```
 
