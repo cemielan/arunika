@@ -21,9 +21,9 @@ export function ThemeSwitch() {
   return (
     <Button
       isIconOnly
-      className="rounded-full"
+      radius="full"
       size="sm"
-      variant="ghost"
+      variant="flat"
       aria-label="Toggle theme"
       onPress={() => setTheme(isDark ? "light" : "dark")}
     >

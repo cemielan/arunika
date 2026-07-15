@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@heroui/react";
-import Image from "next/image";
 import { Newspaper, Sparkles } from "lucide-react";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
+import Image from "next/image";
 
 const NAV_LINKS = [
   { href: "/", label: "Briefing", icon: Sparkles },
@@ -22,12 +22,27 @@ export function NavBar() {
       supports-backdrop-filter:bg-background/60"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex flex-col leading-none">
-            <span className="text-xl font-semibold tracking-tight text-foreground">
-              Arunika.
-            </span>
-          </div>
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src="/logo-dark.svg"
+            alt="Arunika"
+            width={36}
+            height={36}
+            className="block dark:hidden"
+            priority
+          />
+          <Image
+            src="/logo-light.svg"
+            alt="Arunika"
+            width={36}
+            height={36}
+            className="hidden dark:block"
+            priority
+          />
+
+          <span className="text-xl font-semibold tracking-tight">
+            Arunika.
+          </span>
         </Link>
 
         <nav className="flex items-center gap-1 rounded-full bg-surface-secondary p-1">
