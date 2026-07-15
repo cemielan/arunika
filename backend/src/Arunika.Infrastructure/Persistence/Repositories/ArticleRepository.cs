@@ -37,7 +37,14 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => dbContext.SaveChangesAsync(cancellationToken);
 
-    public async Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(string? category, int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(
+        string? category,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        string? sortBy,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = dbContext.Articles
             .Where(a => a.DuplicateOfId == null)
@@ -51,10 +58,23 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             query = query.Where(a => a.Analysis != null && a.Analysis.Category != null && a.Analysis.Category.Name == category);
         }
 
+        if (from is not null)
+        {
+            query = query.Where(a => a.PublishedAt >= from.Value);
+        }
+
+        if (to is not null)
+        {
+            query = query.Where(a => a.PublishedAt < to.Value);
+        }
+
         var totalItems = await query.CountAsync(cancellationToken);
 
+        query = string.Equals(sortBy, "impact", StringComparison.OrdinalIgnoreCase)
+            ? query.OrderByDescending(a => a.Analysis != null ? a.Analysis.ImpactScore : -1).ThenByDescending(a => a.PublishedAt)
+            : query.OrderByDescending(a => a.PublishedAt);
+
         var items = await query
-            .OrderByDescending(a => a.PublishedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
@@ -95,4 +115,14 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Take(take)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Article>> GetEnrichedArticlesInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default)
+        => await dbContext.Articles
+            .Where(a => a.DuplicateOfId == null && a.Analysis != null)
+            .Where(a => a.PublishedAt >= from && a.PublishedAt < to)
+            .Include(a => a.Analysis)
+            .Include(a => a.SectorImpacts)
+                .ThenInclude(impact => impact.Sector)
+            .OrderByDescending(a => a.Analysis!.ImpactScore)
+            .ToListAsync(cancellationToken);
 }

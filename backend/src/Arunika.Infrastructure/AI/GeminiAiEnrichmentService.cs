@@ -17,7 +17,10 @@ namespace Arunika.Infrastructure.AI;
 /// summary, classification, sentiment, impact score, sector impact, and
 /// keywords, instead of six separate calls.
 /// </summary>
-public class GeminiAiEnrichmentService(IOptions<GeminiOptions> options, ILogger<GeminiAiEnrichmentService> logger)
+public class GeminiAiEnrichmentService(
+    IOptions<GeminiOptions> options,
+    GeminiRateLimiter rateLimiter,
+    ILogger<GeminiAiEnrichmentService> logger)
     : IAiEnrichmentService
 {
     private const int MaxAttempts = 3;
@@ -27,6 +30,20 @@ public class GeminiAiEnrichmentService(IOptions<GeminiOptions> options, ILogger<
 
     private static readonly Schema ResponseSchema = BuildResponseSchema();
 
+    // News reporting on litigation, violence, war, fraud, etc. is legitimate,
+    // objective source material for this platform and routinely trips Gemini's
+    // default (very conservative) safety thresholds, causing the response to
+    // come back with no candidates/text (see HandleBlockedResponse below).
+    // Loosen — but don't disable — the categories most likely to false-positive
+    // on financial/political news coverage.
+    private static readonly List<SafetySetting> SafetySettings =
+    [
+        new SafetySetting { Category = HarmCategory.HarmCategoryHarassment, Threshold = HarmBlockThreshold.BlockOnlyHigh },
+        new SafetySetting { Category = HarmCategory.HarmCategoryHateSpeech, Threshold = HarmBlockThreshold.BlockOnlyHigh },
+        new SafetySetting { Category = HarmCategory.HarmCategorySexuallyExplicit, Threshold = HarmBlockThreshold.BlockOnlyHigh },
+        new SafetySetting { Category = HarmCategory.HarmCategoryDangerousContent, Threshold = HarmBlockThreshold.BlockOnlyHigh },
+    ];
+
     public async Task<ArticleAnalysisResult> AnalyzeAsync(Article article, CancellationToken cancellationToken = default)
     {
         var client = new Client(apiKey: options.Value.ApiKey);
@@ -34,7 +51,8 @@ public class GeminiAiEnrichmentService(IOptions<GeminiOptions> options, ILogger<
         var config = new GenerateContentConfig
         {
             ResponseMimeType = "application/json",
-            ResponseSchema = ResponseSchema
+            ResponseSchema = ResponseSchema,
+            SafetySettings = SafetySettings
         };
 
         Exception? lastException = null;
@@ -43,6 +61,8 @@ public class GeminiAiEnrichmentService(IOptions<GeminiOptions> options, ILogger<
         {
             try
             {
+                await rateLimiter.WaitForSlotAsync(cancellationToken);
+
                 var response = await client.Models.GenerateContentAsync(
                     model: options.Value.Model,
                     contents: prompt,
@@ -52,7 +72,7 @@ public class GeminiAiEnrichmentService(IOptions<GeminiOptions> options, ILogger<
                 LogTokenUsage(article.Id, response);
 
                 var text = response.Text
-                    ?? throw new InvalidOperationException("Gemini response contained no text output.");
+                    ?? throw new InvalidOperationException(DescribeEmptyResponse(response));
                 var payload = JsonSerializer.Deserialize<GeminiAnalysisPayload>(text, JsonOptions)
                     ?? throw new InvalidOperationException("Gemini response could not be parsed as JSON.");
 
@@ -91,6 +111,27 @@ public class GeminiAiEnrichmentService(IOptions<GeminiOptions> options, ILogger<
             Content:
             {content}
             """;
+    }
+
+    // response.Text comes back null both for transient SDK/network hiccups and for
+    // content the model refused to answer (safety block, recitation, etc.) — surface
+    // the actual reason so logs/RetryFailedEnrichmentJob sweeps are debuggable instead
+    // of a generic "no text output" every time.
+    private static string DescribeEmptyResponse(GenerateContentResponse response)
+    {
+        var blockReason = response.PromptFeedback?.BlockReason;
+        if (blockReason is not null)
+        {
+            return $"Gemini blocked the prompt (blockReason={blockReason}).";
+        }
+
+        var finishReason = response.Candidates?.FirstOrDefault()?.FinishReason;
+        if (finishReason is not null)
+        {
+            return $"Gemini returned no text (finishReason={finishReason}).";
+        }
+
+        return "Gemini response contained no text output.";
     }
 
     private void LogTokenUsage(Guid articleId, GenerateContentResponse response)

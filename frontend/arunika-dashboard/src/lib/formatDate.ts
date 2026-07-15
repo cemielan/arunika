@@ -10,3 +10,14 @@ export function formatDate(iso: string): string {
 
   return `${day} ${month} ${year}, ${hour}:${minute} UTC`;
 }
+
+/** Formats a "yyyy-MM-dd" date-only string (no time component) as e.g. "Jul 8, 2026". */
+export function formatDateOnly(dateOnly: string): string {
+  if (!dateOnly) return "";
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  if (!year || !month || !day) return dateOnly;
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[month - 1]} ${day}, ${year}`;
+}
+

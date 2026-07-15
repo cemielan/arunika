@@ -24,11 +24,21 @@ public interface IArticleRepository
 
     /// <summary>
     /// Phase 6 (design doc §7) — <c>GET /v1/news</c>. Non-duplicate articles,
-    /// newest first, optionally filtered by category name. Includes the
-    /// source and analysis/category needed to render the list without extra
+    /// optionally filtered by category name and/or a published-date range
+    /// (<paramref name="from"/> inclusive, <paramref name="to"/> exclusive),
+    /// sorted by <paramref name="sortBy"/> (<c>"impact"</c> = highest impact
+    /// score first, anything else/null = newest first). Includes the source
+    /// and analysis/category needed to render the list without extra
     /// round-trips.
     /// </summary>
-    Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(string? category, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(
+        string? category,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        string? sortBy,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Phase 6 — <c>GET /v1/articles/{id}</c>. Loads everything needed for
@@ -49,4 +59,12 @@ public interface IArticleRepository
     /// date — no generated executive summary yet).
     /// </summary>
     Task<IReadOnlyList<Article>> GetTopByImpactScoreAsync(DateOnly date, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// All non-duplicate, fully-enriched articles published in
+    /// [<paramref name="from"/>, <paramref name="to"/>) (dashboard "market
+    /// pulse" + briefing top stories share this one rolling window so both
+    /// figures are always computed from the same set of articles).
+    /// </summary>
+    Task<IReadOnlyList<Article>> GetEnrichedArticlesInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
 }

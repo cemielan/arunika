@@ -80,4 +80,12 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
         article.EnrichmentStatus = EnrichmentStatus.Failed;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetFailedArticleIdsAsync(int maxCount, CancellationToken cancellationToken = default)
+        => await dbContext.Articles
+            .Where(a => a.EnrichmentStatus == EnrichmentStatus.Failed)
+            .OrderBy(a => a.FetchedAt)
+            .Take(maxCount)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken);
 }

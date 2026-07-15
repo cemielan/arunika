@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Card, Chip, Typography } from "@heroui/react";
-import { getBriefing, getMarketPulse } from "@/lib/api";
+import { getBriefing } from "@/lib/api";
+import { formatDateOnly } from "@/lib/formatDate";
 import { ImpactBadge } from "@/components/badges";
 import { MarketPulse } from "@/components/MarketPulse";
 
 export default async function Home() {
-  const [briefing, pulse] = await Promise.all([getBriefing(), getMarketPulse()]);
+  const briefing = await getBriefing();
+  const { marketPulse } = briefing;
 
   return (
     <div className="flex flex-col gap-8">
@@ -21,12 +23,32 @@ export default async function Home() {
         </Typography.Paragraph>
       </div>
 
-      <MarketPulse pulse={pulse} />
+      <MarketPulse pulse={marketPulse} />
+
+      <div>
+        <Typography.Heading level={2} className="text-xl">
+          Most Impactful Stories
+        </Typography.Heading>
+        <Typography.Paragraph size="sm" color="muted" className="mt-1">
+          {marketPulse.totalArticles > 0 ? (
+            <>
+              Ranked by impact score, out of {marketPulse.totalArticles} article
+              {marketPulse.totalArticles === 1 ? "" : "s"} published{" "}
+              {briefing.rangeStart && briefing.rangeEnd
+                ? `${formatDateOnly(briefing.rangeStart)} – ${formatDateOnly(briefing.rangeEnd)}`
+                : "recently"}{" "}
+              (last {briefing.windowDays || 7} days).
+            </>
+          ) : (
+            `Ranked by impact score across the last ${briefing.windowDays || 7} days.`
+          )}
+        </Typography.Paragraph>
+      </div>
 
       {briefing.topStories.length === 0 ? (
         <Card variant="transparent" className="items-center border border-dashed border-border text-center">
           <Typography.Paragraph color="muted">
-            No enriched stories yet for today. Check back once the news pipeline has
+            No enriched stories yet for this window. Check back once the news pipeline has
             run, or browse the{" "}
             <Link href="/news" className="font-medium text-accent hover:underline">
               full news feed
@@ -66,4 +88,5 @@ export default async function Home() {
     </div>
   );
 }
+
 

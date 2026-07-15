@@ -151,7 +151,14 @@ public class FakeArticleRepository : IArticleRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Not needed for Phase 6 API tests.");
 
-    public Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(string? category, int page, int pageSize, CancellationToken cancellationToken = default)
+    public Task<(IReadOnlyList<Article> Items, int TotalItems)> GetFeedAsync(
+        string? category,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        string? sortBy,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = _articles.Where(a => a.DuplicateOfId == null);
 
@@ -160,7 +167,20 @@ public class FakeArticleRepository : IArticleRepository
             query = query.Where(a => a.Analysis?.Category?.Name == category);
         }
 
-        var ordered = query.OrderByDescending(a => a.PublishedAt).ToList();
+        if (from is not null)
+        {
+            query = query.Where(a => a.PublishedAt >= from.Value);
+        }
+
+        if (to is not null)
+        {
+            query = query.Where(a => a.PublishedAt < to.Value);
+        }
+
+        var ordered = string.Equals(sortBy, "impact", StringComparison.OrdinalIgnoreCase)
+            ? query.OrderByDescending(a => a.Analysis?.ImpactScore ?? -1).ToList()
+            : query.OrderByDescending(a => a.PublishedAt).ToList();
+
         var totalItems = ordered.Count;
         var page1Items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
@@ -180,6 +200,17 @@ public class FakeArticleRepository : IArticleRepository
             .Where(a => DateOnly.FromDateTime(a.PublishedAt.UtcDateTime) == date)
             .OrderByDescending(a => a.Analysis!.ImpactScore)
             .Take(take)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<Article>>(results);
+    }
+
+    public Task<IReadOnlyList<Article>> GetEnrichedArticlesInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default)
+    {
+        var results = _articles
+            .Where(a => a.DuplicateOfId == null && a.Analysis is not null)
+            .Where(a => a.PublishedAt >= from && a.PublishedAt < to)
+            .OrderByDescending(a => a.Analysis!.ImpactScore)
             .ToList();
 
         return Task.FromResult<IReadOnlyList<Article>>(results);

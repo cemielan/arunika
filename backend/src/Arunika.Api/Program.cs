@@ -76,10 +76,23 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
     .WithName("HealthCheck");
 
-RecurringJob.AddOrUpdate<FetchNewsJob>(
-    "fetch-news",
-    job => job.RunAsync(CancellationToken.None),
-    "*/15 * * * *");
+// Use the DI-resolved manager rather than the static RecurringJob API: the
+// static API relies on JobStorage.Current, which is only guaranteed to be
+// set once UseHangfireDashboard/UseHangfireServer has run. Resolving the
+// scoped-free IRecurringJobManager from the service provider works in all
+// environments (Development and Production alike).
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    recurringJobManager.AddOrUpdate<FetchNewsJob>(
+        "fetch-news",
+        job => job.RunAsync(CancellationToken.None),
+        "*/15 * * * *");
+    recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
+        "retry-failed-enrichment",
+        job => job.RunAsync(CancellationToken.None),
+        "*/10 * * * *");
+}
 
 app.Run();
 

@@ -58,8 +58,32 @@ export type TopStory = {
   sectors: string[];
 };
 
+export type MarketSentiment = "Bullish" | "Bearish" | "Neutral";
+
+export type MarketPulse = {
+  /** Overall conclusion derived from every enriched article in the briefing window. */
+  sentiment: MarketSentiment;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+  totalArticles: number;
+  /** Average impact score (0-100) across articles in the window. */
+  averageImpact: number;
+  /** Share of the dominant sentiment among all articles in the window, 0-100. */
+  confidence: number;
+};
+
 export type Briefing = {
+  /** The last day of the rolling window (defaults to today, UTC). */
   date: string;
+  /** First day of the rolling window (inclusive). */
+  rangeStart: string;
+  /** Last day of the rolling window (inclusive) — same as `date`. */
+  rangeEnd: string;
+  /** Size of the rolling window in days (currently 7 — see BriefingController). */
+  windowDays: number;
+  /** Sentiment/impact conclusion computed across every article in the window. */
+  marketPulse: MarketPulse;
   topStories: TopStory[];
 };
 
@@ -111,22 +135,88 @@ async function apiGet<T>(
   return { data: body.data, meta: body.meta };
 }
 
+type RawMarketPulse = {
+  sentiment: MarketSentiment;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+  totalArticles: number;
+  averageImpactScore: number;
+  confidence: number;
+};
+
+type RawBriefing = {
+  date: string;
+  rangeStart: string;
+  rangeEnd: string;
+  windowDays: number;
+  marketPulse: RawMarketPulse;
+  topStories: TopStory[];
+};
+
+function emptyBriefing(date?: string): Briefing {
+  return {
+    date: date ?? "",
+    rangeStart: "",
+    rangeEnd: date ?? "",
+    windowDays: 7,
+    marketPulse: {
+      sentiment: "Neutral",
+      bullishCount: 0,
+      bearishCount: 0,
+      neutralCount: 0,
+      totalArticles: 0,
+      averageImpact: 0,
+      confidence: 0,
+    },
+    topStories: [],
+  };
+}
+
+/**
+ * Fetches the daily briefing: top stories and an aggregate "market pulse"
+ * (sentiment/impact conclusion), both computed by the backend from the same
+ * rolling 7-day window (`BriefingController.WindowDays`) so the two never
+ * disagree about what counts as "recent".
+ */
 export async function getBriefing(date?: string): Promise<Briefing> {
   const query = date ? `?date=${encodeURIComponent(date)}` : "";
-  const result = await apiGet<Briefing>(`/v1/briefing${query}`, 300);
+  const result = await apiGet<RawBriefing>(`/v1/briefing${query}`, 300);
   if ("notFound" in result) {
-    return { date: date ?? "", topStories: [] };
+    return emptyBriefing(date);
   }
-  return result.data;
+
+  const { marketPulse, ...rest } = result.data;
+  return {
+    ...rest,
+    marketPulse: {
+      sentiment: marketPulse.sentiment,
+      bullishCount: marketPulse.bullishCount,
+      bearishCount: marketPulse.bearishCount,
+      neutralCount: marketPulse.neutralCount,
+      totalArticles: marketPulse.totalArticles,
+      averageImpact: marketPulse.averageImpactScore,
+      confidence: marketPulse.confidence,
+    },
+  };
 }
+
+export type NewsSortBy = "date" | "impact";
 
 export async function getNewsFeed(params: {
   category?: string;
+  /** Published-date range filter, inclusive, formatted "yyyy-MM-dd". */
+  from?: string;
+  to?: string;
+  sortBy?: NewsSortBy;
   page?: number;
   pageSize?: number;
 }): Promise<{ items: NewsListItem[]; meta: PageMeta }> {
   const search = new URLSearchParams();
   if (params.category) search.set("category", params.category);
+  if (params.from) search.set("from", params.from);
+  if (params.to) search.set("to", params.to);
+  if (params.sortBy) search.set("sortBy", params.sortBy);
   search.set("page", String(params.page ?? 1));
   search.set("pageSize", String(params.pageSize ?? 20));
 
@@ -145,62 +235,4 @@ export async function getArticleDetail(id: string): Promise<ArticleDetail | null
   return result.data;
 }
 
-export type MarketSentiment = "Bullish" | "Bearish" | "Neutral";
 
-export type MarketPulse = {
-  /** Overall conclusion derived from the most recent batch of articles. */
-  sentiment: MarketSentiment;
-  bullishCount: number;
-  bearishCount: number;
-  neutralCount: number;
-  totalArticles: number;
-  /** Average impact score (0-100) across articles that have one. */
-  averageImpact: number;
-  /** Share of the dominant sentiment among all sampled articles, 0-100. */
-  confidence: number;
-};
-
-/**
- * Aggregates sentiment across the most recent news items to produce a single
- * "today's conclusion" (Bullish / Bearish / Neutral) for the dashboard summary.
- */
-export async function getMarketPulse(): Promise<MarketPulse> {
-  const { items } = await getNewsFeed({ pageSize: 50 });
-
-  let bullishCount = 0;
-  let bearishCount = 0;
-  let neutralCount = 0;
-  let impactSum = 0;
-  let impactCount = 0;
-
-  for (const item of items) {
-    if (item.sentiment === "Bullish") bullishCount += 1;
-    else if (item.sentiment === "Bearish") bearishCount += 1;
-    else neutralCount += 1;
-
-    if (item.impactScore !== null) {
-      impactSum += item.impactScore;
-      impactCount += 1;
-    }
-  }
-
-  const totalArticles = items.length;
-  const averageImpact = impactCount > 0 ? Math.round(impactSum / impactCount) : 0;
-
-  let sentiment: MarketSentiment = "Neutral";
-  if (bullishCount > bearishCount && bullishCount > neutralCount) sentiment = "Bullish";
-  else if (bearishCount > bullishCount && bearishCount > neutralCount) sentiment = "Bearish";
-
-  const dominantCount = Math.max(bullishCount, bearishCount, neutralCount);
-  const confidence = totalArticles > 0 ? Math.round((dominantCount / totalArticles) * 100) : 0;
-
-  return {
-    sentiment,
-    bullishCount,
-    bearishCount,
-    neutralCount,
-    totalArticles,
-    averageImpact,
-    confidence,
-  };
-}

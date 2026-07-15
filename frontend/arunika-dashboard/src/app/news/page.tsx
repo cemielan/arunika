@@ -1,26 +1,35 @@
 import Link from "next/link";
-import { Card, Typography, buttonVariants, cn } from "@heroui/react";
-import { CATEGORIES, getNewsFeed } from "@/lib/api";
+import { Card, Typography, buttonVariants } from "@heroui/react";
+import { getNewsFeed, type NewsSortBy } from "@/lib/api";
 import { formatDate } from "@/lib/formatDate";
 import { CategoryBadge, ImpactBadge, SentimentBadge } from "@/components/badges";
+import { NewsFilters } from "@/components/NewsFilters";
 
 type NewsPageProps = {
-  searchParams: Promise<{ category?: string; page?: string }>;
+  searchParams: Promise<{ category?: string; from?: string; to?: string; sortBy?: string; page?: string }>;
 };
 
-function buildHref(category: string | undefined, page: number): string {
+function buildHref(
+  filters: { category?: string; from?: string; to?: string; sortBy?: string },
+  page: number,
+): string {
   const search = new URLSearchParams();
-  if (category) search.set("category", category);
+  if (filters.category) search.set("category", filters.category);
+  if (filters.from) search.set("from", filters.from);
+  if (filters.to) search.set("to", filters.to);
+  if (filters.sortBy && filters.sortBy !== "date") search.set("sortBy", filters.sortBy);
   if (page > 1) search.set("page", String(page));
   const query = search.toString();
   return query ? `/news?${query}` : "/news";
 }
 
 export default async function NewsPage({ searchParams }: NewsPageProps) {
-  const { category, page: pageParam } = await searchParams;
+  const { category, from, to, sortBy, page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
+  const sort: NewsSortBy = sortBy === "impact" ? "impact" : "date";
+  const filters = { category, from, to, sortBy: sort };
 
-  const { items, meta } = await getNewsFeed({ category, page });
+  const { items, meta } = await getNewsFeed({ category, from, to, sortBy: sort, page });
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,37 +39,12 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         </Typography.Heading>
         <Typography.Paragraph color="muted" className="mt-1">
           {meta.totalItems} article{meta.totalItems === 1 ? "" : "s"}
-          {category ? ` in ${category}` : ""}.
+          {category ? ` in ${category}` : ""}
+          {from && to ? ` from ${from} to ${to}` : ""}.
         </Typography.Paragraph>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href="/news"
-          className={cn(
-            "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-            !category
-              ? "bg-accent text-accent-foreground"
-              : "bg-surface-secondary text-muted hover:text-foreground",
-          )}
-        >
-          All
-        </Link>
-        {CATEGORIES.map((c) => (
-          <Link
-            key={c}
-            href={buildHref(c, 1)}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              category === c
-                ? "bg-accent text-accent-foreground"
-                : "bg-surface-secondary text-muted hover:text-foreground",
-            )}
-          >
-            {c}
-          </Link>
-        ))}
-      </div>
+      <NewsFilters category={category} from={from} to={to} sortBy={sort} />
 
       {items.length === 0 ? (
         <Card variant="transparent" className="items-center border border-dashed border-border text-center">
@@ -69,7 +53,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
             {page > 1 && (
               <>
                 {" "}
-                <Link href={buildHref(category, 1)} className="font-medium text-accent hover:underline">
+                <Link href={buildHref(filters, 1)} className="font-medium text-accent hover:underline">
                   Back to page 1
                 </Link>
                 .
@@ -108,7 +92,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         <div className="flex items-center justify-between border-t border-border pt-4 text-sm">
           {page > 1 ? (
             <Link
-              href={buildHref(category, page - 1)}
+              href={buildHref(filters, page - 1)}
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               &larr; Previous
@@ -121,7 +105,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
           </Typography.Paragraph>
           {page < meta.totalPages ? (
             <Link
-              href={buildHref(category, page + 1)}
+              href={buildHref(filters, page + 1)}
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Next &rarr;
@@ -134,4 +118,5 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
     </div>
   );
 }
+
 

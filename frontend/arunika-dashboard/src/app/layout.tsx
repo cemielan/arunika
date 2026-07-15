@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Arunika — Market Intelligence",
+  title: "Arunika",
   description: "The First Light of Market Intelligence.",
 };
 

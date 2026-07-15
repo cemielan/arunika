@@ -7,12 +7,12 @@ type MarketPulseProps = {
 };
 
 const CONCLUSION_COPY: Record<MarketPulseData["sentiment"], string> = {
-  Bullish: "Markets are leaning risk-on today, with upbeat stories outweighing the negative ones.",
-  Bearish: "Today's news skews risk-off, with more downside-driving stories than positive ones.",
-  Neutral: "No clear direction yet — bullish and bearish stories are roughly balanced today.",
+  Bullish: "Markets are leaning risk-on this week, with upbeat stories outweighing the negative ones.",
+  Bearish: "This week's news skews risk-off, with more downside-driving stories than positive ones.",
+  Neutral: "No clear direction yet — bullish and bearish stories are roughly balanced this week.",
 };
 
-/** Dashboard hero: today's overall Bullish / Bearish / Neutral conclusion, with a legend breakdown. */
+/** Dashboard hero: overall Bullish / Bearish / Neutral conclusion for the briefing window, with a legend breakdown. */
 export function MarketPulse({ pulse }: MarketPulseProps) {
   const meta = SENTIMENT_META[pulse.sentiment];
   const { Icon } = meta;
@@ -41,7 +41,7 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
           </div>
           <div className="flex flex-col gap-1">
             <Typography.Paragraph size="xs" color="muted" className="uppercase tracking-wide">
-              Today&apos;s conclusion
+              This week&apos;s conclusion
             </Typography.Paragraph>
             <div className="flex items-center gap-2">
               <Typography.Heading level={2} className="text-2xl">

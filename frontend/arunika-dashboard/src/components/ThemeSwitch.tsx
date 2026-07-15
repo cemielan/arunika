@@ -1,19 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button, useTheme } from "@heroui/react";
 import { motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
 
 export function ThemeSwitch() {
   const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+
+  // `resolvedTheme` is `undefined` on the server and resolves synchronously on
+  // the client from `matchMedia`/localStorage, so using it directly on the
+  // first render would make the client's markup differ from the server-
+  // rendered HTML (hydration mismatch). Gate on `mounted` so the first client
+  // render matches the server's (always non-dark) output; the real theme is
+  // applied on the next render, after hydration has committed.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <Button
       isIconOnly
-      radius="full"
+      className="rounded-full"
       size="sm"
-      variant="flat"
+      variant="ghost"
       aria-label="Toggle theme"
       onPress={() => setTheme(isDark ? "light" : "dark")}
     >
@@ -29,3 +39,4 @@ export function ThemeSwitch() {
     </Button>
   );
 }
+
