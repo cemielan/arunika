@@ -1,27 +1,15 @@
 import Link from "next/link";
-import { Card, Typography, buttonVariants } from "@heroui/react";
+import { Card, Typography } from "@heroui/react";
 import { getNewsFeed, type NewsSortBy } from "@/lib/api";
 import { formatDate } from "@/lib/formatDate";
+import { buildNewsHref } from "@/lib/newsHref";
 import { CategoryBadge, ImpactBadge, SentimentBadge } from "@/components/badges";
 import { NewsFilters } from "@/components/NewsFilters";
+import { NewsPagination } from "@/components/NewsPagination";
 
 type NewsPageProps = {
   searchParams: Promise<{ category?: string; from?: string; to?: string; sortBy?: string; page?: string }>;
 };
-
-function buildHref(
-  filters: { category?: string; from?: string; to?: string; sortBy?: string },
-  page: number,
-): string {
-  const search = new URLSearchParams();
-  if (filters.category) search.set("category", filters.category);
-  if (filters.from) search.set("from", filters.from);
-  if (filters.to) search.set("to", filters.to);
-  if (filters.sortBy && filters.sortBy !== "date") search.set("sortBy", filters.sortBy);
-  if (page > 1) search.set("page", String(page));
-  const query = search.toString();
-  return query ? `/news?${query}` : "/news";
-}
 
 export default async function NewsPage({ searchParams }: NewsPageProps) {
   const { category, from, to, sortBy, page: pageParam } = await searchParams;
@@ -53,7 +41,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
             {page > 1 && (
               <>
                 {" "}
-                <Link href={buildHref(filters, 1)} className="font-medium text-accent hover:underline">
+                <Link href={buildNewsHref(filters, 1)} className="font-medium text-accent hover:underline">
                   Back to page 1
                 </Link>
                 .
@@ -88,35 +76,13 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         </ul>
       )}
 
-      {meta.totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-border pt-4 text-sm">
-          {page > 1 ? (
-            <Link
-              href={buildHref(filters, page - 1)}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              &larr; Previous
-            </Link>
-          ) : (
-            <span />
-          )}
-          <Typography.Paragraph size="sm" color="muted">
-            Page {meta.page} of {meta.totalPages}
-          </Typography.Paragraph>
-          {page < meta.totalPages ? (
-            <Link
-              href={buildHref(filters, page + 1)}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Next &rarr;
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
-      )}
+      <NewsPagination
+        page={meta.page}
+        totalPages={meta.totalPages}
+        totalItems={meta.totalItems}
+        pageSize={meta.pageSize}
+        filters={filters}
+      />
     </div>
   );
 }
-
-

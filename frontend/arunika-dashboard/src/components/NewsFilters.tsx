@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Button,
@@ -12,7 +12,12 @@ import {
   cn,
 } from "@heroui/react";
 import type { Selection } from "react-aria-components";
-import { CalendarDate, getLocalTimeZone, parseDate, today } from "@internationalized/date";
+import {
+  CalendarDate,
+  getLocalTimeZone,
+  parseDate,
+  today,
+} from "@internationalized/date";
 import {
   Bitcoin,
   CalendarRange,
@@ -27,6 +32,7 @@ import {
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/api";
 import { formatDateOnly } from "@/lib/formatDate";
+import { useSpringVector } from "@/app/hooks/useSpringVector";
 
 const CATEGORY_ICONS: Record<string, typeof Newspaper> = {
   Politics: Vote,
@@ -45,20 +51,43 @@ type NewsFiltersProps = {
   sortBy?: string;
 };
 
-type NextParams = Partial<Pick<NewsFiltersProps, "category" | "from" | "to" | "sortBy">>;
+type NextParams = Partial<
+  Pick<NewsFiltersProps, "category" | "from" | "to" | "sortBy">
+>;
 
 /** Client-side filter bar for the news feed: category (HeroUI TagGroup), sort
- * order, and a published-date range (HeroUI RangeCalendar in a popover).
- * Every change updates the URL's search params so the server component
- * re-fetches with the new filter (and the filters survive a page refresh). */
+ * order (spring-driven sliding toggle), and a published-date range (HeroUI
+ * RangeCalendar in a popover). Every change updates the URL's search params
+ * so the server component re-fetches with the new filter. */
 export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [range, setRange] = useState<{ start: CalendarDate; end: CalendarDate } | null>(
-    from && to ? { start: parseDate(from), end: parseDate(to) } : null,
-  );
+  const [range, setRange] = useState<{
+    start: CalendarDate;
+    end: CalendarDate;
+  } | null>(from && to ? { start: parseDate(from), end: parseDate(to) } : null);
   const [isRangeOpen, setIsRangeOpen] = useState(false);
+
+  const isImpact = sortBy === "impact";
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dateBtnRef = useRef<HTMLButtonElement>(null);
+  const impactBtnRef = useRef<HTMLButtonElement>(null);
+  const [pillTarget, setPillTarget] = useState({ left: 0, width: 0 });
+
+  useLayoutEffect(() => {
+    const activeEl = isImpact ? impactBtnRef.current : dateBtnRef.current;
+    const track = trackRef.current;
+    if (activeEl && track) {
+      const trackRect = track.getBoundingClientRect();
+      const elRect = activeEl.getBoundingClientRect();
+      setPillTarget({ left: elRect.left - trackRect.left, width: elRect.width });
+    }
+  }, [isImpact]);
+
+  const { values, velocities } = useSpringVector([pillTarget.left, pillTarget.width]);
+  const [animLeft, animWidth] = values;
+  const stretch = Math.min(Math.abs(velocities[0]) / 900, 0.12);
 
   function navigate(next: NextParams) {
     const merged = { category, from, to, sortBy, ...next };
@@ -66,7 +95,8 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
     if (merged.category) params.set("category", merged.category);
     if (merged.from) params.set("from", merged.from);
     if (merged.to) params.set("to", merged.to);
-    if (merged.sortBy && merged.sortBy !== "date") params.set("sortBy", merged.sortBy);
+    if (merged.sortBy && merged.sortBy !== "date")
+      params.set("sortBy", merged.sortBy);
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
   }
@@ -92,7 +122,9 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
   }
 
   const rangeLabel =
-    from && to ? `${formatDateOnly(from)} – ${formatDateOnly(to)}` : "Date range";
+    from && to
+      ? `${formatDateOnly(from)} – ${formatDateOnly(to)}`
+      : "Date range";
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,27 +153,38 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
       </TagGroup>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 rounded-full bg-surface-secondary p-1">
+        {/* Fluid sort toggle */}
+        <div
+          ref={trackRef}
+          className="relative flex items-center gap-1 rounded-full bg-surface-secondary p-1"
+        >
+          <span
+            aria-hidden
+            className="absolute inset-y-1 rounded-full bg-accent shadow-sm will-change-transform"
+            style={{
+              left: animLeft,
+              width: animWidth,
+              transform: `scaleX(${1 + stretch})`,
+            }}
+          />
           <button
+            ref={dateBtnRef}
             type="button"
             onClick={() => navigate({ sortBy: "date" })}
             className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              !sortBy || sortBy === "date"
-                ? "bg-accent text-accent-foreground"
-                : "text-muted hover:text-foreground",
+              "relative z-10 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200",
+              !isImpact ? "text-accent-foreground" : "text-muted hover:text-foreground",
             )}
           >
             Newest first
           </button>
           <button
+            ref={impactBtnRef}
             type="button"
             onClick={() => navigate({ sortBy: "impact" })}
             className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              sortBy === "impact"
-                ? "bg-accent text-accent-foreground"
-                : "text-muted hover:text-foreground",
+              "relative z-10 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200",
+              isImpact ? "text-accent-foreground" : "text-muted hover:text-foreground",
             )}
           >
             Highest impact
@@ -169,6 +212,7 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
               <RangeCalendar.Root
                 value={range}
                 onChange={setRange}
+                minValue={today(getLocalTimeZone()).subtract({ days: 6 })}
                 maxValue={today(getLocalTimeZone())}
               >
                 <RangeCalendar.Header>
@@ -178,26 +222,31 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
                 </RangeCalendar.Header>
                 <RangeCalendar.Grid>
                   <RangeCalendar.GridHeader>
-                    {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+                    {(day) => (
+                      <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
+                    )}
                   </RangeCalendar.GridHeader>
                   <RangeCalendar.GridBody>
-                    {(date) => (
-                      <RangeCalendar.Cell date={date}>
-                        <RangeCalendar.CellIndicator />
-                      </RangeCalendar.Cell>
-                    )}
+                    {(date) => <RangeCalendar.Cell date={date} />}
                   </RangeCalendar.GridBody>
                 </RangeCalendar.Grid>
               </RangeCalendar.Root>
               <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
                 <Typography.Paragraph size="xs" color="muted">
-                  {range ? `${range.start.toString()} – ${range.end.toString()}` : "Pick a start and end date"}
+                  {range
+                    ? `${range.start.toString()} – ${range.end.toString()}`
+                    : "Pick a start and end date"}
                 </Typography.Paragraph>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onPress={clearRange}>
                     Clear
                   </Button>
-                  <Button variant="primary" size="sm" onPress={applyRange} isDisabled={!range}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onPress={applyRange}
+                    isDisabled={!range}
+                  >
                     Apply
                   </Button>
                 </div>
