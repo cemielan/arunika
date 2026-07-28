@@ -3,8 +3,10 @@ using Arunika.Api.Contracts;
 using Arunika.Api.Middleware;
 using Arunika.Infrastructure;
 using Arunika.Infrastructure.BackgroundJobs;
+using Arunika.Infrastructure.Persistence;
 using Hangfire;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -53,6 +55,22 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Apply pending EF Core migrations automatically on every startup.
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ArunikaDbContext>();
+        context.Database.Migrate();
+        Log.Information("EF Core migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to apply EF Core migrations on startup. " +
+            "The app will start but the database schema may be out of date.");
+    }
+}
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
