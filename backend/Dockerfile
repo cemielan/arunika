@@ -20,11 +20,7 @@ RUN dotnet publish src/Arunika.Api/Arunika.Api.csproj -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-# Render (and most container platforms) route external traffic to a fixed
-# container port. 8080 is bound here and exposed; no code change needed.
-ENV ASPNETCORE_URLS=http://+:8080 \
-    ASPNETCORE_ENVIRONMENT=Production
-EXPOSE 8080
+ENV ASPNETCORE_ENVIRONMENT=Production
 
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "Arunika.Api.dll"]
+CMD dotnet Arunika.Api.dll --urls "http://+:$PORT"
