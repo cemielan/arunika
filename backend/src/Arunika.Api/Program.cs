@@ -76,22 +76,30 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
     .WithName("HealthCheck");
 
-// Use the DI-resolved manager rather than the static RecurringJob API: the
-// static API relies on JobStorage.Current, which is only guaranteed to be
-// set once UseHangfireDashboard/UseHangfireServer has run. Resolving the
-// scoped-free IRecurringJobManager from the service provider works in all
-// environments (Development and Production alike).
+// Register recurring Hangfire jobs. On Supabase free tier (or any cold-start
+// DB), the first connection may be slow; wrap in try-catch so the app still
+// starts even if lock acquisition times out. The Hangfire server will retry
+// automatically on its own polling schedule, and the jobs become registered
+// on a subsequent successful connection.
 using (var scope = app.Services.CreateScope())
 {
-    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    recurringJobManager.AddOrUpdate<FetchNewsJob>(
-        "fetch-news",
-        job => job.RunAsync(CancellationToken.None),
-        "*/15 * * * *");
-    recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
-        "retry-failed-enrichment",
-        job => job.RunAsync(CancellationToken.None),
-        "*/10 * * * *");
+    try
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        recurringJobManager.AddOrUpdate<FetchNewsJob>(
+            "fetch-news",
+            job => job.RunAsync(CancellationToken.None),
+            "*/15 * * * *");
+        recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
+            "retry-failed-enrichment",
+            job => job.RunAsync(CancellationToken.None),
+            "*/10 * * * *");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to register Hangfire recurring jobs on startup. " +
+            "The jobs will be registered once the database is reachable.");
+    }
 }
 
 app.Run();
