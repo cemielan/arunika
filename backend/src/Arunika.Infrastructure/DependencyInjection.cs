@@ -10,6 +10,8 @@ using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Arunika.Infrastructure;
 
@@ -36,7 +38,10 @@ public static class DependencyInjection
             var baseUrl = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FinancialModelingPrepOptions>>().Value.BaseUrl;
             client.BaseAddress = new Uri(baseUrl);
         });
-        services.AddHttpClient<INewsFetcher, CnbcRssNewsFetcher>();
+
+        RegisterRssFeed(services, "CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html");
+        RegisterRssFeed(services, "MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories");
+        RegisterRssFeed(services, "Yahoo Finance", "https://finance.yahoo.com/news/rssindex");
 
         services.AddScoped<FetchNewsJob>();
         services.AddScoped<EnrichArticleJob>();
@@ -49,5 +54,18 @@ public static class DependencyInjection
         services.AddHangfireServer();
 
         return services;
+    }
+
+    private static void RegisterRssFeed(IServiceCollection services, string sourceName, string feedUrl)
+    {
+        var clientName = $"rss-{sourceName.ToLowerInvariant().Replace(" ", "-")}";
+        services.AddHttpClient(clientName);
+        services.AddTransient<INewsFetcher>(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient(clientName);
+            var logger = sp.GetRequiredService<ILogger<RssNewsFetcher>>();
+            return new RssNewsFetcher(sourceName, feedUrl, httpClient, logger);
+        });
     }
 }

@@ -5,19 +5,26 @@ using Microsoft.Extensions.Logging;
 
 namespace Arunika.Infrastructure.News.Rss;
 
-/// <summary>
-/// Generic RSS/Atom fetcher — one instance per configured feed. Free, no API
-/// key required, unlike FMP's paywalled news endpoints.
-/// </summary>
-public class CnbcRssNewsFetcher(HttpClient httpClient, ILogger<CnbcRssNewsFetcher> logger) : INewsFetcher
+public class RssNewsFetcher : INewsFetcher
 {
-    private const string FeedUrl = "https://www.cnbc.com/id/100003114/device/rss/rss.html";
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<RssNewsFetcher> _logger;
+    private readonly string _sourceName;
+    private readonly string _feedUrl;
 
-    public string SourceName => "CNBC";
+    public RssNewsFetcher(string sourceName, string feedUrl, HttpClient httpClient, ILogger<RssNewsFetcher> logger)
+    {
+        _sourceName = sourceName;
+        _feedUrl = feedUrl;
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+
+    public string SourceName => _sourceName;
 
     public async Task<IReadOnlyList<FetchedArticle>> FetchAsync(CancellationToken cancellationToken = default)
     {
-        await using var stream = await httpClient.GetStreamAsync(FeedUrl, cancellationToken);
+        await using var stream = await _httpClient.GetStreamAsync(_feedUrl, cancellationToken);
         using var reader = XmlReader.Create(stream);
         var feed = SyndicationFeed.Load(reader);
 
@@ -28,9 +35,7 @@ public class CnbcRssNewsFetcher(HttpClient httpClient, ILogger<CnbcRssNewsFetche
             var title = item.Title?.Text;
 
             if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(title))
-            {
                 continue;
-            }
 
             var publishedAt = item.PublishDate != default ? item.PublishDate : DateTimeOffset.UtcNow;
             var rawContent = item.Summary?.Text ?? string.Empty;
@@ -38,7 +43,7 @@ public class CnbcRssNewsFetcher(HttpClient httpClient, ILogger<CnbcRssNewsFetche
             results.Add(new FetchedArticle(title, url, rawContent, publishedAt));
         }
 
-        logger.LogInformation("{Source}: parsed {Count} item(s) from feed.", SourceName, results.Count);
+        _logger.LogInformation("{Source}: parsed {Count} item(s) from feed.", _sourceName, results.Count);
         return results;
     }
 }
