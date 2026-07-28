@@ -2,12 +2,13 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@heroui/react";
-import { Newspaper, Sparkles } from "lucide-react";
+import { LogIn, LogOut, Newspaper, Sparkles, User } from "lucide-react";
 import Image from "next/image";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { useSpringVector } from "@/app/hooks/useSpringVector";
+import { useAuth } from "@/lib/auth-context";
 
 const NAV_LINKS = [
   { href: "/", label: "Briefing", icon: Sparkles },
@@ -16,6 +17,8 @@ const NAV_LINKS = [
 
 export function NavBar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAuthenticated, user, logout, showNotification } = useAuth();
 
   const activeIndex = NAV_LINKS.findIndex(({ href }) =>
     href === "/" ? pathname === "/" : pathname?.startsWith(href),
@@ -39,6 +42,12 @@ export function NavBar() {
   const { values, velocities } = useSpringVector([pillTarget.left, pillTarget.width]);
   const [animLeft, animWidth] = values;
   const stretch = Math.min(Math.abs(velocities[0]) / 900, 0.12);
+
+  const handleLogout = () => {
+    logout();
+    showNotification({ status: "success", title: "Signed out", message: "You have been signed out successfully." });
+    router.push("/");
+  };
 
   return (
     <header
@@ -104,7 +113,32 @@ export function NavBar() {
           })}
         </nav>
 
-        <ThemeSwitch />
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
+              <span className="flex items-center gap-1.5 text-sm text-muted">
+                <User className="size-3.5" />
+                {user?.email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                <LogOut className="size-3.5" />
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+            >
+              <LogIn className="size-3.5" />
+              Sign In
+            </Link>
+          )}
+          <ThemeSwitch />
+        </div>
       </div>
     </header>
   );

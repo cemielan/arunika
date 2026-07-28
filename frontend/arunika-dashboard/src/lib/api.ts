@@ -1,5 +1,17 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5097";
 
+export type UserDto = {
+  id: string;
+  email: string;
+  role: string;
+};
+
+export type AuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: UserDto;
+};
+
 export type ApiErrorEnvelope = { error: { code: string; message: string } };
 
 export type PageMeta = {
@@ -97,6 +109,42 @@ export const CATEGORIES = [
   "Commodities",
   "Crypto",
 ] as const;
+
+async function authFetch(path: string, email: string, password: string, action: string): Promise<AuthResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      let message = `${action} failed`;
+      try {
+        const body = await res.json() as ApiErrorEnvelope;
+        message = body.error?.message ?? message;
+      } catch { }
+      throw new ApiRequestError(message, res.status);
+    }
+
+    const body = await res.json() as { data: AuthResponse };
+    return body.data;
+  } catch (err) {
+    if (err instanceof ApiRequestError) throw err;
+    throw new ApiRequestError(
+      `${action} failed — unable to reach server.`,
+      0,
+    );
+  }
+}
+
+export function register(email: string, password: string): Promise<AuthResponse> {
+  return authFetch("/v1/auth/register", email, password, "Sign up");
+}
+
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return authFetch("/v1/auth/login", email, password, "Sign in");
+}
 
 class ApiRequestError extends Error {
   constructor(

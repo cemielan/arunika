@@ -15,6 +15,7 @@ public class ArunikaDbContext(DbContextOptions<ArunikaDbContext> options) : DbCo
     public DbSet<ArticleKeyword> ArticleKeywords => Set<ArticleKeyword>();
     public DbSet<Briefing> Briefings => Set<Briefing>();
     public DbSet<BriefingItem> BriefingItems => Set<BriefingItem>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

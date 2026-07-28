@@ -1,12 +1,16 @@
 using System.Reflection;
+using System.Text;
 using Arunika.Api.Contracts;
 using Arunika.Api.Middleware;
 using Arunika.Infrastructure;
+using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
 using Arunika.Infrastructure.Persistence;
 using Hangfire;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -23,6 +27,38 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .WriteTo.Console());
 
 // Add services to the container.
+
+var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+var jwtOptions = jwtSection.Get<JwtOptions>()
+    ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
+builder.Services.Configure<JwtOptions>(jwtSection);
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
+            ClockSkew = TimeSpan.Zero,
+        };
+    });
+
+var frontendOrigin = builder.Configuration.GetValue<string>("Cors:FrontendOrigin") ?? "http://localhost:3000";
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy => policy
+        .WithOrigins(frontendOrigin)
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 
@@ -87,6 +123,9 @@ app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 
+app.UseCors();
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

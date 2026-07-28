@@ -1,5 +1,6 @@
 using Arunika.Application.Abstractions;
 using Arunika.Infrastructure.AI;
+using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
 using Arunika.Infrastructure.News.FinancialModelingPrep;
 using Arunika.Infrastructure.News.Rss;
@@ -27,6 +28,10 @@ public static class DependencyInjection
         services.AddScoped<IArticleRepository, ArticleRepository>();
         services.AddScoped<INewsSourceRepository, NewsSourceRepository>();
         services.AddScoped<IArticleAnalysisRepository, ArticleAnalysisRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.AddScoped<IAuthService, AuthService>();
 
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
         services.AddSingleton<GeminiRateLimiter>();
