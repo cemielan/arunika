@@ -67,4 +67,12 @@ public interface IArticleRepository
     /// figures are always computed from the same set of articles).
     /// </summary>
     Task<IReadOnlyList<Article>> GetEnrichedArticlesInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes articles with a <see cref="Article.PublishedAt"/> older than
+    /// <paramref name="olderThan"/>, along with their related analysis, sector
+    /// impacts, keywords, briefing items, and duplicate links. Runs in a single
+    /// transaction. Returns the number of articles deleted.
+    /// </summary>
+    Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default);
 }

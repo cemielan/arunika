@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<FetchNewsJob>();
         services.AddScoped<EnrichArticleJob>();
         services.AddScoped<RetryFailedEnrichmentJob>();
+        services.AddScoped<CleanupOldArticlesJob>();
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()

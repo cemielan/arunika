@@ -152,7 +152,11 @@ using (var scope = app.Services.CreateScope())
         recurringJobManager.AddOrUpdate<FetchNewsJob>(
             "fetch-news",
             job => job.RunAsync(CancellationToken.None),
-            "*/15 * * * *");
+            "*/30 * * * *");
+        recurringJobManager.AddOrUpdate<CleanupOldArticlesJob>(
+            "cleanup-old-articles",
+            job => job.RunAsync(CancellationToken.None),
+            "0 0 * * *");
         recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
             "retry-failed-enrichment",
             job => job.RunAsync(CancellationToken.None),

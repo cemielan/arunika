@@ -215,4 +215,10 @@ public class FakeArticleRepository : IArticleRepository
 
         return Task.FromResult<IReadOnlyList<Article>>(results);
     }
+
+    public Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
+    {
+        var count = _articles.RemoveAll(a => a.PublishedAt < olderThan);
+        return Task.FromResult(count);
+    }
 }

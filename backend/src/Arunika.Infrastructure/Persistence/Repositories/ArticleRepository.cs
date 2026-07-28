@@ -125,4 +125,46 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
                 .ThenInclude(impact => impact.Sector)
             .OrderByDescending(a => a.Analysis!.ImpactScore)
             .ToListAsync(cancellationToken);
+
+    public async Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
+    {
+        var cutoff = olderThan.UtcDateTime;
+
+        var oldArticles = await dbContext.Articles
+            .Where(a => a.PublishedAt < cutoff)
+            .ToListAsync(cancellationToken);
+
+        if (oldArticles.Count == 0)
+        {
+            return 0;
+        }
+
+        var ids = oldArticles.Select(a => a.Id).ToList();
+
+        await dbContext.ArticleSectorImpacts
+            .Where(si => ids.Contains(si.ArticleId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.ArticleKeywords
+            .Where(ak => ids.Contains(ak.ArticleId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.BriefingItems
+            .Where(bi => ids.Contains(bi.ArticleId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.ArticleAnalyses
+            .Where(aa => ids.Contains(aa.ArticleId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.Articles
+            .Where(a => ids.Contains(a.DuplicateOfId!.Value))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.Articles
+            .Where(a => ids.Contains(a.Id))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return oldArticles.Count;
+    }
 }
