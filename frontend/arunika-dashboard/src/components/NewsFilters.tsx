@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Button,
   Popover,
@@ -63,7 +63,6 @@ type NextParams = Partial<
 export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParamsHook = useSearchParams();
 
   const [searchInput, setSearchInput] = useState(search ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -91,10 +90,10 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, []);
 
-  // Sync search input if the URL changes externally (e.g. browser back/forward).
+  // Sync search input when URL changes externally (browser back/forward).
   useEffect(() => {
-    setSearchInput(searchParamsHook.get("search") ?? "");
-  }, [searchParamsHook]);
+    setSearchInput(search ?? "");
+  }, [search]);
 
   const [range, setRange] = useState<{
     start: CalendarDate;

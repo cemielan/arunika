@@ -61,8 +61,7 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var tsQuery = EF.Functions.PlainToTsQuery("english", search);
-            query = query.Where(a => EF.Functions.ToTsVector("english", a.Title + " " + a.RawContent).Matches(tsQuery));
+            query = query.Where(a => a.Title.Contains(search) || a.RawContent.Contains(search));
         }
 
         if (from is not null)
