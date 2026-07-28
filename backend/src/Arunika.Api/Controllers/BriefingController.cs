@@ -6,25 +6,27 @@ using Microsoft.AspNetCore.Mvc;
 namespace Arunika.Api.Controllers;
 
 /// <summary>
-/// <c>GET /v1/briefing</c> — daily morning brief (design doc §7). V1 is a
-/// simple version per the to-do list: top stories ranked by impact score,
-/// plus an aggregate sentiment "market pulse", both computed on request from
-/// a rolling <see cref="WindowDays"/>-day window ending on the requested date
-/// (design doc's "recent news" window — kept consistent with the news feed's
-/// own date-range filter). The AI-generated executive summary/risk
-/// level/watchlist arrive with <c>GenerateDailyBriefingJob</c> (Phase 9).
+/// <c>GET /v1/briefing</c> — daily morning brief (design doc §7). Returns the
+/// cached AI-generated briefing (executive summary, sentiment, risk level) when
+/// <c>GenerateDailyBriefingJob</c> has already run for the requested date;
+/// otherwise falls back to a live-computed market pulse. Top stories and market
+/// pulse are always computed from the same rolling <see cref="WindowDays"/>-day
+/// window.
 /// </summary>
 [ApiController]
 [Route("v1/briefing")]
 [Produces("application/json")]
-public class BriefingController(IArticleRepository articleRepository) : ControllerBase
+public class BriefingController(
+    IArticleRepository articleRepository,
+    IArticleAnalysisRepository articleAnalysisRepository) : ControllerBase
 {
     private const int TopStoryCount = 10;
     private const int WindowDays = 7;
 
     /// <summary>
     /// Returns the top stories and overall market pulse for the rolling <see cref="WindowDays"/>-day
-    /// window ending on the given date (defaults to today, UTC).
+    /// window ending on the given date (defaults to today, UTC). Includes the AI-generated
+    /// executive summary/sentiment/risk level if <c>GenerateDailyBriefingJob</c> has run.
     /// </summary>
     /// <param name="date">The last day of the window. Defaults to today (UTC).</param>
     /// <param name="cancellationToken">Request cancellation token.</param>
@@ -38,6 +40,9 @@ public class BriefingController(IArticleRepository articleRepository) : Controll
 
         var from = new DateTimeOffset(rangeStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
         var to = new DateTimeOffset(rangeEnd.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(1);
+
+        // Try the cached briefing first.
+        var cached = await articleAnalysisRepository.GetBriefingByDateAsync(rangeEnd, cancellationToken);
 
         var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
 
@@ -53,7 +58,11 @@ public class BriefingController(IArticleRepository articleRepository) : Controll
 
         var marketPulse = BuildMarketPulse(articles);
 
-        var data = new BriefingResponseDto(rangeEnd, rangeStart, rangeEnd, WindowDays, marketPulse, topStories);
+        var data = new BriefingResponseDto(
+            rangeEnd, rangeStart, rangeEnd, WindowDays, marketPulse, topStories,
+            cached?.ExecutiveSummary,
+            cached is not null ? cached.OverallSentiment.ToString() : null,
+            cached is not null ? cached.RiskLevel.ToString() : null);
         var meta = new { generatedAt = DateTimeOffset.UtcNow };
 
         return Ok(new ApiResponse<BriefingResponseDto>(data, meta));

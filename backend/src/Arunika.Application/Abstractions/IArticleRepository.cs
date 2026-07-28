@@ -38,6 +38,7 @@ public interface IArticleRepository
         string? sortBy,
         int page,
         int pageSize,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

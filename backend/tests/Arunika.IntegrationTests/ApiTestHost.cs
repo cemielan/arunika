@@ -30,6 +30,7 @@ public sealed class ApiTestHost : IAsyncLifetime
             .AddControllers()
             .AddApplicationPart(typeof(NewsController).Assembly);
         builder.Services.AddScoped<IArticleRepository, FakeArticleRepository>();
+        builder.Services.AddScoped<IArticleAnalysisRepository, FakeArticleAnalysisRepository>();
 
         _app = builder.Build();
         _app.MapControllers();

@@ -26,6 +26,11 @@ public class ArticleConfiguration : IEntityTypeConfiguration<Article>
             .HasMethod("GIN")
             .HasOperators("gin_trgm_ops");
 
+        // Full-text search GIN index on title + raw_content (Phase 9).
+        builder.HasIndex(a => new { a.Title, a.RawContent })
+            .HasMethod("GIN")
+            .HasAnnotation("Npgsql:TsVectorConfig", "english");
+
         builder.HasOne(a => a.DuplicateOf)
             .WithMany()
             .HasForeignKey(a => a.DuplicateOfId)

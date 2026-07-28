@@ -1,7 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Button,
   Popover,
@@ -46,22 +46,55 @@ const CATEGORY_ICONS: Record<string, typeof Newspaper> = {
 
 type NewsFiltersProps = {
   category?: string;
+  search?: string;
   from?: string;
   to?: string;
   sortBy?: string;
 };
 
 type NextParams = Partial<
-  Pick<NewsFiltersProps, "category" | "from" | "to" | "sortBy">
+  Pick<NewsFiltersProps, "category" | "search" | "from" | "to" | "sortBy">
 >;
 
-/** Client-side filter bar for the news feed: category (HeroUI TagGroup), sort
- * order (spring-driven sliding toggle), and a published-date range (HeroUI
- * RangeCalendar in a popover). Every change updates the URL's search params
- * so the server component re-fetches with the new filter. */
-export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
+/** Client-side filter bar for the news feed: full-text search, category (HeroUI
+ * TagGroup), sort order (spring-driven sliding toggle), and a published-date
+ * range (HeroUI RangeCalendar in a popover). Every change updates the URL's
+ * search params so the server component re-fetches with the new filter. */
+export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParamsHook = useSearchParams();
+
+  const [searchInput, setSearchInput] = useState(search ?? "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        const merged = { category, search: value || undefined, from, to, sortBy };
+        const params = new URLSearchParams();
+        if (merged.category) params.set("category", merged.category);
+        if (merged.search) params.set("search", merged.search);
+        if (merged.from) params.set("from", merged.from);
+        if (merged.to) params.set("to", merged.to);
+        if (merged.sortBy && merged.sortBy !== "date") params.set("sortBy", merged.sortBy);
+        const query = params.toString();
+        router.push(query ? `${pathname}?${query}` : pathname);
+      }, 300);
+    },
+    [category, from, to, sortBy, pathname, router],
+  );
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
+  // Sync search input if the URL changes externally (e.g. browser back/forward).
+  useEffect(() => {
+    setSearchInput(searchParamsHook.get("search") ?? "");
+  }, [searchParamsHook]);
 
   const [range, setRange] = useState<{
     start: CalendarDate;
@@ -90,9 +123,10 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
   const stretch = Math.min(Math.abs(velocities[0]) / 900, 0.12);
 
   function navigate(next: NextParams) {
-    const merged = { category, from, to, sortBy, ...next };
+    const merged = { category, search, from, to, sortBy, ...next };
     const params = new URLSearchParams();
     if (merged.category) params.set("category", merged.category);
+    if (merged.search) params.set("search", merged.search);
     if (merged.from) params.set("from", merged.from);
     if (merged.to) params.set("to", merged.to);
     if (merged.sortBy && merged.sortBy !== "date")
@@ -128,6 +162,25 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="relative w-full">
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+        </svg>
+        <input
+          value={searchInput}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder="Search articles…"
+          aria-label="Search articles"
+          className="w-full rounded-lg border border-border bg-surface-primary py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-hidden"
+        />
+      </div>
+
       <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TagGroup
           aria-label="Filter by category"

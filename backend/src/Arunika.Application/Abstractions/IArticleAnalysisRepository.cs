@@ -22,4 +22,16 @@ public interface IArticleAnalysisRepository
     /// automatically re-run enrichment so a failure is never permanent (design doc §5).
     /// </summary>
     Task<IReadOnlyList<Guid>> GetFailedArticleIdsAsync(int maxCount, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a daily briefing (executive summary, sentiment, risk level, and
+    /// linked top-story items). Replaces any existing briefing for the same date.
+    /// </summary>
+    Task SaveBriefingAsync(Briefing briefing, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the cached briefing for the given date, or null if none exists yet.
+    /// Includes the linked <see cref="BriefingItem"/>s and their articles.
+    /// </summary>
+    Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default);
 }

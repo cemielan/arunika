@@ -88,4 +88,26 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
             .Take(maxCount)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
+
+    public async Task SaveBriefingAsync(Briefing briefing, CancellationToken cancellationToken = default)
+    {
+        var existing = await dbContext.Briefings
+            .Include(b => b.Items)
+            .FirstOrDefaultAsync(b => b.BriefingDate == briefing.BriefingDate, cancellationToken);
+
+        if (existing is not null)
+        {
+            dbContext.BriefingItems.RemoveRange(existing.Items);
+            dbContext.Briefings.Remove(existing);
+        }
+
+        dbContext.Briefings.Add(briefing);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default)
+        => dbContext.Briefings
+            .Include(b => b.Items.OrderBy(i => i.Rank))
+                .ThenInclude(bi => bi.Article)
+            .FirstOrDefaultAsync(b => b.BriefingDate == date, cancellationToken);
 }

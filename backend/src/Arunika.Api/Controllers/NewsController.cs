@@ -21,6 +21,7 @@ public class NewsController(IArticleRepository articleRepository) : ControllerBa
     /// range, sorted newest-first or by impact score.
     /// </summary>
     /// <param name="category">Exact category name (e.g. "Markets"). Omit for all categories.</param>
+    /// <param name="search">Full-text search query against title and raw content.</param>
     /// <param name="from">Only include articles published on/after this date (UTC, inclusive). Omit for no lower bound.</param>
     /// <param name="to">Only include articles published on/before this date (UTC, inclusive). Omit for no upper bound.</param>
     /// <param name="sortBy">"date" (default, newest first) or "impact" (highest impact score first).</param>
@@ -32,6 +33,7 @@ public class NewsController(IArticleRepository articleRepository) : ControllerBa
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<NewsListItemDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetNews(
         [FromQuery] string? category,
+        [FromQuery] string? search,
         [FromQuery] DateOnly? from,
         [FromQuery] DateOnly? to,
         [FromQuery] string? sortBy,
@@ -46,7 +48,7 @@ public class NewsController(IArticleRepository articleRepository) : ControllerBa
         var toExclusive = to is null ? (DateTimeOffset?)null : new DateTimeOffset(to.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(1);
 
         var (items, totalItems) = await articleRepository.GetFeedAsync(
-            category, fromInclusive, toExclusive, sortBy, page, pageSize, cancellationToken);
+            category, fromInclusive, toExclusive, sortBy, page, pageSize, search, cancellationToken);
         var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize);
 
         var data = items.Select(article => article.ToListItemDto()).ToList();

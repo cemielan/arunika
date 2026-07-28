@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
         services.AddSingleton<GeminiRateLimiter>();
         services.AddScoped<IAiEnrichmentService, GeminiAiEnrichmentService>();
+        services.AddScoped<IBriefingGenerationService, BriefingGenerationService>();
 
         services.Configure<FinancialModelingPrepOptions>(configuration.GetSection(FinancialModelingPrepOptions.SectionName));
         services.AddHttpClient<INewsFetcher, FinancialModelingPrepNewsFetcher>((sp, client) =>
@@ -52,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<EnrichArticleJob>();
         services.AddScoped<RetryFailedEnrichmentJob>();
         services.AddScoped<CleanupOldArticlesJob>();
+        services.AddScoped<GenerateDailyBriefingJob>();
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()

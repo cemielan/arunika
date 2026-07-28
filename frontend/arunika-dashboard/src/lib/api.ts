@@ -97,6 +97,12 @@ export type Briefing = {
   /** Sentiment/impact conclusion computed across every article in the window. */
   marketPulse: MarketPulse;
   topStories: TopStory[];
+  /** AI-generated executive summary (when GenerateDailyBriefingJob has run). */
+  executiveSummary?: string;
+  /** AI-generated overall sentiment (when GenerateDailyBriefingJob has run). */
+  overallSentiment?: string;
+  /** AI-generated risk level (when GenerateDailyBriefingJob has run). */
+  riskLevel?: string;
 };
 
 /** The seven fixed categories seeded in the database (design doc §4). */
@@ -200,6 +206,9 @@ type RawBriefing = {
   windowDays: number;
   marketPulse: RawMarketPulse;
   topStories: TopStory[];
+  executiveSummary?: string;
+  overallSentiment?: string;
+  riskLevel?: string;
 };
 
 function emptyBriefing(date?: string): Briefing {
@@ -234,9 +243,12 @@ export async function getBriefing(date?: string): Promise<Briefing> {
     return emptyBriefing(date);
   }
 
-  const { marketPulse, ...rest } = result.data;
+  const { marketPulse, executiveSummary, overallSentiment, riskLevel, ...rest } = result.data;
   return {
     ...rest,
+    executiveSummary,
+    overallSentiment,
+    riskLevel,
     marketPulse: {
       sentiment: marketPulse.sentiment,
       bullishCount: marketPulse.bullishCount,
@@ -253,6 +265,8 @@ export type NewsSortBy = "date" | "impact";
 
 export async function getNewsFeed(params: {
   category?: string;
+  /** Full-text search query against article title and content. */
+  search?: string;
   /** Published-date range filter, inclusive, formatted "yyyy-MM-dd". */
   from?: string;
   to?: string;
@@ -262,6 +276,7 @@ export async function getNewsFeed(params: {
 }): Promise<{ items: NewsListItem[]; meta: PageMeta }> {
   const search = new URLSearchParams();
   if (params.category) search.set("category", params.category);
+  if (params.search) search.set("search", params.search);
   if (params.from) search.set("from", params.from);
   if (params.to) search.set("to", params.to);
   if (params.sortBy) search.set("sortBy", params.sortBy);

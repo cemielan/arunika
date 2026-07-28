@@ -153,6 +153,10 @@ using (var scope = app.Services.CreateScope())
             "fetch-news",
             job => job.RunAsync(CancellationToken.None),
             "*/30 * * * *");
+        recurringJobManager.AddOrUpdate<GenerateDailyBriefingJob>(
+            "generate-daily-briefing",
+            job => job.RunAsync(CancellationToken.None),
+            "0 6 * * *");
         recurringJobManager.AddOrUpdate<CleanupOldArticlesJob>(
             "cleanup-old-articles",
             job => job.RunAsync(CancellationToken.None),

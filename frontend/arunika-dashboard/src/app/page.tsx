@@ -5,6 +5,15 @@ import { formatDateOnly } from "@/lib/formatDate";
 import { ImpactBadge } from "@/components/badges";
 import { MarketPulse } from "@/components/MarketPulse";
 
+function riskColor(risk: string | undefined): string {
+  switch (risk) {
+    case "High": return "text-red-600";
+    case "Medium": return "text-amber-600";
+    case "Low": return "text-green-600";
+    default: return "text-muted";
+  }
+}
+
 export default async function Home() {
   const briefing = await getBriefing();
   const { marketPulse } = briefing;
@@ -22,6 +31,29 @@ export default async function Home() {
           Top market-moving stories, ranked by impact score.
         </Typography.Paragraph>
       </div>
+
+      {briefing.executiveSummary && (
+        <Card variant="default" className="flex-col gap-3 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            {briefing.overallSentiment && (
+              <Chip color={briefing.overallSentiment === "Bullish" ? "success" : briefing.overallSentiment === "Bearish" ? "danger" : "default"} variant="primary" size="sm">
+                {briefing.overallSentiment}
+              </Chip>
+            )}
+            {briefing.riskLevel && (
+              <Chip color="default" variant="soft" size="sm" className={riskColor(briefing.riskLevel)}>
+                {briefing.riskLevel} risk
+              </Chip>
+            )}
+            <Typography.Paragraph size="xs" color="muted">
+              AI-generated
+            </Typography.Paragraph>
+          </div>
+          <Typography.Paragraph className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
+            {briefing.executiveSummary}
+          </Typography.Paragraph>
+        </Card>
+      )}
 
       <MarketPulse pulse={marketPulse} />
 

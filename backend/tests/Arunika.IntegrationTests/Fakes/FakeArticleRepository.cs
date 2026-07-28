@@ -158,9 +158,17 @@ public class FakeArticleRepository : IArticleRepository
         string? sortBy,
         int page,
         int pageSize,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = _articles.Where(a => a.DuplicateOfId == null);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(a =>
+                a.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                a.RawContent.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (!string.IsNullOrWhiteSpace(category))
         {

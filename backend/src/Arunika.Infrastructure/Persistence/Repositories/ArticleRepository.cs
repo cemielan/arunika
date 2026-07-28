@@ -44,6 +44,7 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
         string? sortBy,
         int page,
         int pageSize,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = dbContext.Articles
@@ -56,6 +57,12 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
         if (!string.IsNullOrWhiteSpace(category))
         {
             query = query.Where(a => a.Analysis != null && a.Analysis.Category != null && a.Analysis.Category.Name == category);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var tsQuery = EF.Functions.ToTsQuery("english", search);
+            query = query.Where(a => EF.Functions.ToTsVector("english", a.Title + " " + a.RawContent).Matches(tsQuery));
         }
 
         if (from is not null)

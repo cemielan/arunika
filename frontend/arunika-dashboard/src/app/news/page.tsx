@@ -8,16 +8,16 @@ import { NewsFilters } from "@/components/NewsFilters";
 import { NewsPagination } from "@/components/NewsPagination";
 
 type NewsPageProps = {
-  searchParams: Promise<{ category?: string; from?: string; to?: string; sortBy?: string; page?: string }>;
+  searchParams: Promise<{ category?: string; search?: string; from?: string; to?: string; sortBy?: string; page?: string }>;
 };
 
 export default async function NewsPage({ searchParams }: NewsPageProps) {
-  const { category, from, to, sortBy, page: pageParam } = await searchParams;
+  const { category, search, from, to, sortBy, page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const sort: NewsSortBy = sortBy === "impact" ? "impact" : "date";
-  const filters = { category, from, to, sortBy: sort };
+  const filters = { category, search, from, to, sortBy: sort };
 
-  const { items, meta } = await getNewsFeed({ category, from, to, sortBy: sort, page });
+  const { items, meta } = await getNewsFeed({ category, search, from, to, sortBy: sort, page });
 
   return (
     <div className="flex flex-col gap-6">
