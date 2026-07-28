@@ -55,47 +55,57 @@ public class GeminiAiEnrichmentService(
             SafetySettings = SafetySettings
         };
 
+        var modelsToTry = new List<string> { options.Value.Model };
+        modelsToTry.AddRange(options.Value.FallbackModels);
+
         Exception? lastException = null;
 
-        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        foreach (var model in modelsToTry)
         {
-            try
+            for (var attempt = 1; attempt <= MaxAttempts; attempt++)
             {
-                await rateLimiter.WaitForSlotAsync(cancellationToken);
-
-                var response = await client.Models.GenerateContentAsync(
-                    model: options.Value.Model,
-                    contents: prompt,
-                    config: config,
-                    cancellationToken: cancellationToken);
-
-                LogTokenUsage(article.Id, response);
-
-                var text = response.Text
-                    ?? throw new InvalidOperationException(DescribeEmptyResponse(response));
-                var payload = JsonSerializer.Deserialize<GeminiAnalysisPayload>(text, JsonOptions)
-                    ?? throw new InvalidOperationException("Gemini response could not be parsed as JSON.");
-
-                return MapToResult(payload, options.Value.Model);
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                if (attempt == MaxAttempts)
+                try
                 {
-                    break;
-                }
+                    await rateLimiter.WaitForSlotAsync(cancellationToken);
 
-                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
-                logger.LogWarning(ex,
-                    "Gemini enrichment attempt {Attempt}/{MaxAttempts} failed for article {ArticleId}; retrying in {Delay}.",
-                    attempt, MaxAttempts, article.Id, delay);
-                await Task.Delay(delay, cancellationToken);
+                    var response = await client.Models.GenerateContentAsync(
+                        model: model,
+                        contents: prompt,
+                        config: config,
+                        cancellationToken: cancellationToken);
+
+                    LogTokenUsage(article.Id, model, response);
+
+                    var text = response.Text
+                        ?? throw new InvalidOperationException(DescribeEmptyResponse(response));
+                    var payload = JsonSerializer.Deserialize<GeminiAnalysisPayload>(text, JsonOptions)
+                        ?? throw new InvalidOperationException("Gemini response could not be parsed as JSON.");
+
+                    return MapToResult(payload, model);
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    if (attempt < MaxAttempts)
+                    {
+                        var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                        logger.LogWarning(ex,
+                            "Gemini enrichment attempt {Attempt}/{MaxAttempts} with model {Model} failed for article {ArticleId}; retrying in {Delay}.",
+                            attempt, MaxAttempts, model, article.Id, delay);
+                        await Task.Delay(delay, cancellationToken);
+                    }
+                    else
+                    {
+                        logger.LogWarning(ex,
+                            "Gemini enrichment exhausted {MaxAttempts} attempts with model {Model} for article {ArticleId}; trying next fallback.",
+                            MaxAttempts, model, article.Id);
+                    }
+                }
             }
         }
 
         throw new InvalidOperationException(
-            $"Gemini enrichment failed for article {article.Id} after {MaxAttempts} attempts.", lastException);
+            $"Gemini enrichment failed for article {article.Id} after exhausting all models.", lastException);
     }
 
     private static string BuildPrompt(Article article)
@@ -134,7 +144,7 @@ public class GeminiAiEnrichmentService(
         return "Gemini response contained no text output.";
     }
 
-    private void LogTokenUsage(Guid articleId, GenerateContentResponse response)
+    private void LogTokenUsage(Guid articleId, string model, GenerateContentResponse response)
     {
         var usage = response.UsageMetadata;
         if (usage is null)
@@ -143,8 +153,8 @@ public class GeminiAiEnrichmentService(
         }
 
         logger.LogInformation(
-            "Gemini enrichment for article {ArticleId}: prompt={PromptTokens}, candidates={CandidateTokens}, total={TotalTokens} tokens.",
-            articleId, usage.PromptTokenCount, usage.CandidatesTokenCount, usage.TotalTokenCount);
+            "Gemini enrichment for article {ArticleId} with model {Model}: prompt={PromptTokens}, candidates={CandidateTokens}, total={TotalTokens} tokens.",
+            articleId, model, usage.PromptTokenCount, usage.CandidatesTokenCount, usage.TotalTokenCount);
     }
 
     private static ArticleAnalysisResult MapToResult(GeminiAnalysisPayload payload, string modelVersion)

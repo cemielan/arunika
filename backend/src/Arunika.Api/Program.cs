@@ -31,6 +31,12 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtOptions = jwtSection.Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
+if (string.IsNullOrWhiteSpace(jwtOptions.Secret))
+{
+    throw new InvalidOperationException(
+        "Jwt:Secret is not configured. Set it via environment variable, user-secrets, or appsettings. " +
+        "Generate a key with: dotnet user-secrets set \"Jwt:Secret\" \"your-32-char-plus-key\"");
+}
 builder.Services.Configure<JwtOptions>(jwtSection);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
