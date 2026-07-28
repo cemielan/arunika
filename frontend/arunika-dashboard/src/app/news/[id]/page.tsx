@@ -21,22 +21,25 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
   return (
     <article className="flex flex-col gap-6">
       <div>
-        <Link href="/news" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-          &larr; Back to news feed
+        <Link href="/news" className={buttonVariants({ variant: "ghost", size: "sm" }) + " -ml-2 sm:ml-0"}>
+          &larr; <span className="hidden sm:inline">Back to news feed</span><span className="sm:hidden">Back</span>
         </Link>
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <CategoryBadge category={article.category} />
-          <SentimentBadge sentiment={article.sentiment} />
-          <ImpactBadge score={article.impactScore} />
-        </div>
-        <Typography.Heading level={1} className="text-2xl">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <CategoryBadge category={article.category} />
+        <SentimentBadge sentiment={article.sentiment} />
+        <ImpactBadge score={article.impactScore} />
+      </div>
+        <Typography.Heading level={1} className="text-xl sm:text-2xl">
           {article.title}
         </Typography.Heading>
-        <Typography.Paragraph size="sm" color="muted">
-          {article.source} &middot; {formatDate(article.publishedAt)} &middot;{" "}
+        <Typography.Paragraph size="sm" color="muted" className="flex flex-wrap gap-x-1">
+          <span>{article.source}</span>
+          <span className="hidden sm:inline">&middot;</span>
+          <span>{formatDate(article.publishedAt)}</span>
+          <span>&middot;</span>
           <HeroLink href={article.url} target="_blank" rel="noopener noreferrer">
             View original
           </HeroLink>

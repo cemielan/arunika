@@ -22,7 +22,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Typography.Heading level={1} className="text-3xl">
+        <Typography.Heading level={1} className="text-2xl sm:text-3xl">
           News Feed
         </Typography.Heading>
         <Typography.Paragraph color="muted" className="mt-1">

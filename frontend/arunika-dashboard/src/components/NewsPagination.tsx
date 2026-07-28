@@ -52,8 +52,10 @@ export function NewsPagination({
 
   return (
     <Pagination>
-      <Pagination.Summary>
-        Showing {start}-{end} of {totalItems} result{totalItems === 1 ? "" : "s"}
+      <Pagination.Summary className="text-xs sm:text-sm">
+        <span className="hidden sm:inline">Showing </span>
+        {start}-{end}
+        <span className="hidden sm:inline"> of {totalItems} result{totalItems === 1 ? "" : "s"}</span>
       </Pagination.Summary>
       <Pagination.Content>
         <Pagination.Item>

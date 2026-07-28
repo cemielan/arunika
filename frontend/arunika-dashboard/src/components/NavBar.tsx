@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@heroui/react";
-import { LogIn, LogOut, Newspaper, Sparkles, User } from "lucide-react";
+import { LogIn, LogOut, Menu, Newspaper, Sparkles, User, X } from "lucide-react";
 import Image from "next/image";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { useSpringVector } from "@/app/hooks/useSpringVector";
@@ -19,6 +19,7 @@ export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, user, logout, showNotification } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const activeIndex = NAV_LINKS.findIndex(({ href }) =>
     href === "/" ? pathname === "/" : pathname?.startsWith(href),
@@ -30,6 +31,7 @@ export function NavBar() {
   const [pillTarget, setPillTarget] = useState({ left: 0, width: 0 });
 
   useLayoutEffect(() => {
+    if (window.innerWidth < 640) return;
     const track = trackRef.current;
     const activeEl = linkRefs.current[activeHref];
     if (track && activeEl) {
@@ -46,6 +48,7 @@ export function NavBar() {
   const handleLogout = () => {
     logout();
     showNotification({ status: "success", title: "Signed out", message: "You have been signed out successfully." });
+    setMenuOpen(false);
     router.push("/");
   };
 
@@ -55,33 +58,33 @@ export function NavBar() {
       backdrop-blur transition-[background-color,border-color] duration-120 ease-linear 
       supports-backdrop-filter:bg-background/60"
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-        <Link href="/" className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
+        <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <Image
             src="/logo-dark.svg"
             alt="Arunika"
-            width={36}
-            height={36}
-            className="block dark:hidden"
+            width={32}
+            height={32}
+            className="block dark:hidden sm:w-9 sm:h-9"
             priority
           />
           <Image
             src="/logo-light.svg"
             alt="Arunika"
-            width={36}
-            height={36}
-            className="hidden dark:block"
+            width={32}
+            height={32}
+            className="hidden dark:block sm:w-9 sm:h-9"
             priority
           />
-
-          <span className="text-xl font-semibold tracking-tight">
+          <span className="text-lg font-semibold tracking-tight sm:text-xl">
             Arunika.
           </span>
         </Link>
 
+        {/* Desktop nav */}
         <nav
           ref={trackRef}
-          className="relative flex items-center gap-1 rounded-full bg-surface-secondary p-1"
+          className="relative hidden items-center gap-1 rounded-full bg-surface-secondary p-1 sm:flex"
         >
           <span
             aria-hidden
@@ -113,12 +116,13 @@ export function NavBar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-3">
+        {/* Desktop right section */}
+        <div className="hidden items-center gap-3 sm:flex">
           {isAuthenticated ? (
             <>
               <span className="flex items-center gap-1.5 text-sm text-muted">
                 <User className="size-3.5" />
-                {user?.email}
+                <span className="max-w-28 truncate">{user?.email}</span>
               </span>
               <button
                 onClick={handleLogout}
@@ -139,7 +143,70 @@ export function NavBar() {
           )}
           <ThemeSwitch />
         </div>
+
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="flex items-center sm:hidden"
+          aria-label="Toggle menu"
+        >
+          {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
       </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="border-t border-border px-4 pb-4 pt-2 sm:hidden">
+          <div className="flex flex-col gap-2">
+            {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+              const isActive = href === activeHref;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    isActive ? "bg-surface-secondary text-foreground" : "text-muted hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Link>
+              );
+            })}
+            <hr className="border-border" />
+            {isAuthenticated ? (
+              <>
+                <span className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
+                  <User className="size-4" />
+                  {user?.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+                >
+                  <LogOut className="size-4" />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                <LogIn className="size-4" />
+                Sign In
+              </Link>
+            )}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <span className="text-sm text-muted">Theme</span>
+              <ThemeSwitch />
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

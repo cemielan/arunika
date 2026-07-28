@@ -53,7 +53,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="mx-auto mt-16 flex max-w-sm flex-col gap-6">
+    <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
       <div className="text-center">
         <Typography.Heading level={1} className="text-2xl">Create Account</Typography.Heading>
         <Typography.Paragraph color="muted" className="mt-1">

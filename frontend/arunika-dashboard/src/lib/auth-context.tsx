@@ -85,7 +85,7 @@ export function NotificationBanner() {
   if (!notification) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300 sm:bottom-6 sm:right-6">
       <Alert status={notification.status}>
         <Alert.Indicator />
         <Alert.Content>

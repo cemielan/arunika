@@ -128,29 +128,31 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <TagGroup
-        aria-label="Filter by category"
-        selectionMode="single"
-        disallowEmptySelection
-        selectedKeys={new Set([category ?? "all"])}
-        onSelectionChange={handleCategorySelectionChange}
-      >
-        <TagGroup.List>
-          <Tag id="all">
-            <Newspaper className="size-3.5" />
-            All
-          </Tag>
-          {CATEGORIES.map((c) => {
-            const Icon = CATEGORY_ICONS[c] ?? Newspaper;
-            return (
-              <Tag key={c} id={c}>
-                <Icon className="size-3.5" />
-                {c}
-              </Tag>
-            );
-          })}
-        </TagGroup.List>
-      </TagGroup>
+      <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TagGroup
+          aria-label="Filter by category"
+          selectionMode="single"
+          disallowEmptySelection
+          selectedKeys={new Set([category ?? "all"])}
+          onSelectionChange={handleCategorySelectionChange}
+        >
+          <TagGroup.List>
+            <Tag id="all">
+              <Newspaper className="size-3.5" />
+              All
+            </Tag>
+            {CATEGORIES.map((c) => {
+              const Icon = CATEGORY_ICONS[c] ?? Newspaper;
+              return (
+                <Tag key={c} id={c}>
+                  <Icon className="size-3.5" />
+                  {c}
+                </Tag>
+              );
+            })}
+          </TagGroup.List>
+        </TagGroup>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         {/* Fluid sort toggle */}
@@ -194,11 +196,11 @@ export function NewsFilters({ category, from, to, sortBy }: NewsFiltersProps) {
         <Popover.Root isOpen={isRangeOpen} onOpenChange={setIsRangeOpen}>
           <Popover.Trigger>
             <Button variant="outline" size="sm" className="gap-1.5!">
-              <CalendarRange className="size-4" />
-              {rangeLabel}
+              <CalendarRange className="size-4 shrink-0" />
+              <span className="max-w-[120px] truncate sm:max-w-none">{rangeLabel}</span>
               {from && to && (
                 <X
-                  className="size-3.5 text-muted hover:text-foreground"
+                  className="size-3.5 shrink-0 text-muted hover:text-foreground"
                   onClick={(event) => {
                     event.stopPropagation();
                     clearRange();

@@ -24,12 +24,12 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
   ];
 
   return (
-    <Card variant="default" className="p-6! gap-6!">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+    <Card variant="default" className="gap-3! p-4! sm:gap-6! sm:p-6!">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div
             className={
-              "flex size-14 shrink-0 items-center justify-center rounded-2xl " +
+              "flex size-10 shrink-0 items-center justify-center rounded-2xl sm:size-14 " +
               (meta.color === "success"
                 ? "bg-success/15 text-success"
                 : meta.color === "danger"
@@ -37,41 +37,38 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
                   : "bg-default text-muted")
             }
           >
-            <Icon className="size-7" />
+            <Icon className="size-5 sm:size-7" />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col">
             <Typography.Paragraph size="xs" color="muted" className="uppercase tracking-wide">
               This week&apos;s conclusion
             </Typography.Paragraph>
             <div className="flex items-center gap-2">
-              <Typography.Heading level={2} className="text-2xl">
+              <Typography.Heading level={2} className="text-xl sm:text-2xl">
                 {meta.label}
               </Typography.Heading>
               <Chip color={meta.color} variant="soft" size="sm">
-                {pulse.confidence}% confidence
+                {pulse.confidence}%
               </Chip>
             </div>
-            <Typography.Paragraph size="sm" color="muted" className="max-w-md">
-              {CONCLUSION_COPY[pulse.sentiment]}
-            </Typography.Paragraph>
           </div>
         </div>
-
-        <div className="flex flex-col gap-1 sm:items-end">
+        <div className="flex flex-col items-end gap-0">
           <Typography.Paragraph size="xs" color="muted">
-            Avg. impact score
+            Avg. impact
           </Typography.Paragraph>
-          <Typography.Heading level={3} className="text-3xl">
+          <Typography.Heading level={3} className="text-xl sm:text-3xl">
             {pulse.averageImpact}
           </Typography.Heading>
-          <Typography.Paragraph size="xs" color="muted">
-            across {pulse.totalArticles} recent stories
-          </Typography.Paragraph>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex h-2 w-full overflow-hidden rounded-full bg-surface-secondary">
+      <Typography.Paragraph size="sm" color="muted" className="hidden sm:block max-w-md">
+        {CONCLUSION_COPY[pulse.sentiment]}
+      </Typography.Paragraph>
+
+      <div className="flex items-center gap-2">
+        <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-surface-secondary">
           {rows.map((row) => (
             <div
               key={row.key}
@@ -88,28 +85,31 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
             />
           ))}
         </div>
+        <Typography.Paragraph size="xs" color="muted" className="shrink-0">
+          {pulse.totalArticles} stories
+        </Typography.Paragraph>
+      </div>
 
-        <div className="flex flex-wrap gap-3">
-          {rows.map((row) => {
-            const rowMeta = SENTIMENT_META[row.key];
-            const RowIcon = rowMeta.Icon;
-            return (
-              <div key={row.key} className="flex items-center gap-1.5 text-sm text-muted">
-                <RowIcon
-                  className={
-                    row.key === "Bullish"
-                      ? "size-3.5 text-success"
-                      : row.key === "Bearish"
-                        ? "size-3.5 text-danger"
-                        : "size-3.5 text-muted"
-                  }
-                />
-                <span className="font-medium text-foreground">{row.count}</span>
-                <span>{rowMeta.label}</span>
-              </div>
-            );
-          })}
-        </div>
+      <div className="flex gap-3">
+        {rows.map((row) => {
+          const rowMeta = SENTIMENT_META[row.key];
+          const RowIcon = rowMeta.Icon;
+          return (
+            <div key={row.key} className="flex items-center gap-1 text-xs text-muted sm:text-sm">
+              <RowIcon
+                className={
+                  row.key === "Bullish"
+                    ? "size-3 text-success sm:size-3.5"
+                    : row.key === "Bearish"
+                      ? "size-3 text-danger sm:size-3.5"
+                      : "size-3 text-muted sm:size-3.5"
+                }
+              />
+              <span className="font-medium text-foreground">{row.count}</span>
+              <span className="hidden sm:inline">{rowMeta.label}</span>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );

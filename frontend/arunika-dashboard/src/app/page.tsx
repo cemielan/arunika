@@ -10,15 +10,15 @@ export default async function Home() {
   const { marketPulse } = briefing;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6 sm:gap-8">
       <div>
         <Typography.Paragraph size="sm" color="muted">
           {briefing.date || "Today"}
         </Typography.Paragraph>
-        <Typography.Heading level={1} className="text-3xl">
+        <Typography.Heading level={1} className="text-2xl sm:text-3xl">
           Today&apos;s Briefing
         </Typography.Heading>
-        <Typography.Paragraph color="muted" className="mt-1">
+        <Typography.Paragraph color="muted" className="mt-1 hidden sm:block">
           Top market-moving stories, ranked by impact score.
         </Typography.Paragraph>
       </div>
@@ -26,10 +26,10 @@ export default async function Home() {
       <MarketPulse pulse={marketPulse} />
 
       <div>
-        <Typography.Heading level={2} className="text-xl">
+        <Typography.Heading level={2} className="text-lg sm:text-xl">
           Most Impactful Stories
         </Typography.Heading>
-        <Typography.Paragraph size="sm" color="muted" className="mt-1">
+        <Typography.Paragraph size="sm" color="muted" className="mt-1 hidden sm:block">
           {marketPulse.totalArticles > 0 ? (
             <>
               Ranked by impact score, out of {marketPulse.totalArticles} article
@@ -57,7 +57,7 @@ export default async function Home() {
           </Typography.Paragraph>
         </Card>
       ) : (
-        <ol className="flex flex-col gap-3">
+        <ol className="flex flex-col gap-2 sm:gap-3">
           {briefing.topStories.map((story, index) => (
             <li key={story.articleId}>
               <Link href={`/news/${story.articleId}`} className="block">
@@ -65,12 +65,18 @@ export default async function Home() {
                   variant="default"
                   className="transition-colors hover:bg-surface-secondary"
                 >
-                  <div className="flex items-start gap-4">
-                    <span className="mt-0.5 text-sm font-semibold text-muted">{index + 1}</span>
-                    <div className="flex flex-1 flex-col gap-2">
-                      <Typography.Paragraph weight="medium">{story.title}</Typography.Paragraph>
-                      <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-start gap-2 sm:gap-4">
+                    <span className="mt-1 text-xs font-semibold text-muted sm:mt-0.5 sm:text-sm">
+                      {index + 1}
+                    </span>
+                    <div className="flex flex-1 flex-col gap-1 sm:gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <Typography.Paragraph weight="medium" className="text-sm sm:text-base">
+                          {story.title}
+                        </Typography.Paragraph>
                         <ImpactBadge score={story.impactScore} />
+                      </div>
+                      <div className="hidden flex-wrap items-center gap-2 sm:flex">
                         {story.sectors.map((sector) => (
                           <Chip key={sector} color="default" variant="soft" size="sm">
                             {sector}
