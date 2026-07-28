@@ -20,7 +20,9 @@ RUN dotnet publish src/Arunika.Api/Arunika.Api.csproj -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    PORT=8080
+EXPOSE 8080
 
 COPY --from=build /app/publish .
 CMD dotnet Arunika.Api.dll --urls "http://+:$PORT"
