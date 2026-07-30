@@ -54,4 +54,32 @@ public class AuthController(IAuthService authService) : ControllerBase
 
         return Ok(new ApiResponse<AuthResponse>(new AuthResponse(result.AccessToken!, result.RefreshToken!, result.User!)));
     }
+
+    [HttpPost("verify-otp")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.VerifyOtpAsync(request.Email, request.Otp, cancellationToken);
+        if (!result.Success)
+        {
+            return BadRequest(new ApiErrorEnvelope(new ApiErrorDetail(result.ErrorCode!, result.ErrorMessage!)));
+        }
+
+        return Ok(new ApiResponse<AuthResponse>(new AuthResponse(result.AccessToken!, result.RefreshToken!, result.User!)));
+    }
+
+    [HttpPost("resend-otp")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.ResendOtpAsync(request.Email, cancellationToken);
+        if (!result.Success)
+        {
+            return BadRequest(new ApiErrorEnvelope(new ApiErrorDetail(result.ErrorCode!, result.ErrorMessage!)));
+        }
+
+        return Ok(new ApiResponse<object>(new { }));
+    }
 }

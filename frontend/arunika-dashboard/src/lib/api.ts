@@ -298,4 +298,51 @@ export async function getArticleDetail(id: string): Promise<ArticleDetail | null
   return result.data;
 }
 
+export async function verifyOtp(email: string, otp: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, otp }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json() as ApiErrorEnvelope;
+    throw new ApiRequestError(body.error?.message ?? "Verification failed", res.status);
+  }
+
+  const body = await res.json() as { data: AuthResponse };
+  return body.data;
+}
+
+export async function resendOtp(email: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/resend-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json() as ApiErrorEnvelope;
+    throw new ApiRequestError(body.error?.message ?? "Failed to resend code", res.status);
+  }
+}
+
+export type SectorAggregation = {
+  sector: string;
+  articleCount: number;
+  averageImpactScore: number;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+  dominantSentiment: string;
+};
+
+export async function getSectors(): Promise<SectorAggregation[]> {
+  const result = await apiGet<SectorAggregation[]>("/v1/sectors", 300);
+  if ("notFound" in result) {
+    return [];
+  }
+  return result.data;
+}
+
 

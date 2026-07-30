@@ -2,6 +2,7 @@ using Arunika.Application.Abstractions;
 using Arunika.Infrastructure.AI;
 using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
+using Arunika.Infrastructure.Email;
 using Arunika.Infrastructure.News.FinancialModelingPrep;
 using Arunika.Infrastructure.News.Rss;
 using Arunika.Infrastructure.Persistence;
@@ -82,6 +83,10 @@ public static class DependencyInjection
         services.AddScoped<RetryFailedEnrichmentJob>();
         services.AddScoped<CleanupOldArticlesJob>();
         services.AddScoped<GenerateDailyBriefingJob>();
+        services.AddScoped<SendEmailDigestJob>();
+
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()

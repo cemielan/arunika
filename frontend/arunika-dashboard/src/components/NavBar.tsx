@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 const NAV_LINKS = [
   { href: "/", label: "Briefing", icon: Sparkles },
   { href: "/news", label: "News Feed", icon: Newspaper },
+  { href: "/sectors", label: "Sectors", icon: User },
 ];
 
 export function NavBar() {

@@ -40,10 +40,9 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const result = await apiRegister(email, password);
-      login(result.accessToken, result.refreshToken, result.user);
-      showNotification({ status: "success", title: "Account created", message: "Your account has been created successfully." });
-      router.push("/");
+      await apiRegister(email, password);
+      showNotification({ status: "success", title: "Account created", message: "Check your email for the verification code." });
+      router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed";
       showNotification({ status: "danger", title: "Sign up failed", message });

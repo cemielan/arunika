@@ -14,4 +14,9 @@ public class UserRepository(ArunikaDbContext dbContext) : IUserRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => dbContext.SaveChangesAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<User>> GetDigestSubscribersAsync(CancellationToken cancellationToken = default)
+        => await dbContext.Users
+            .Where(u => u.EmailVerified && u.DigestEnabled)
+            .ToListAsync(cancellationToken);
 }

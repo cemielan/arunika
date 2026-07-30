@@ -165,6 +165,10 @@ using (var scope = app.Services.CreateScope())
             "retry-failed-enrichment",
             job => job.RunAsync(CancellationToken.None),
             "*/10 * * * *");
+        recurringJobManager.AddOrUpdate<SendEmailDigestJob>(
+            "send-email-digest",
+            job => job.RunAsync(CancellationToken.None),
+            "0 8 * * *");
     }
     catch (Exception ex)
     {
