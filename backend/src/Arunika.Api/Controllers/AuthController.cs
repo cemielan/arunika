@@ -74,7 +74,16 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
-        var result = await authService.ForgotPasswordAsync(request.Email, cancellationToken);
+        // Use the Origin header (or Referer as fallback) so the reset link
+        // points to the actual frontend domain, not a hardcoded config value.
+        var baseUrl = Request.Headers.Origin.FirstOrDefault()
+                   ?? Request.Headers.Referer.FirstOrDefault();
+        if (baseUrl is not null)
+        {
+            baseUrl = baseUrl.TrimEnd('/');
+        }
+
+        var result = await authService.ForgotPasswordAsync(request.Email, baseUrl, cancellationToken);
         return Ok(new ApiResponse<object>(new { }));
     }
 

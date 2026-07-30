@@ -130,7 +130,7 @@ public class AuthService(
         return new AuthResult(true, ErrorMessage: "A new verification code has been sent to your email.");
     }
 
-    public async Task<AuthResult> ForgotPasswordAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<AuthResult> ForgotPasswordAsync(string email, string? baseUrl = null, CancellationToken cancellationToken = default)
     {
         var user = await userRepository.GetByEmailAsync(email, cancellationToken);
         if (user is null)
@@ -143,7 +143,8 @@ public class AuthService(
         user.ResetTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(1);
         await userRepository.SaveChangesAsync(cancellationToken);
 
-        var resetUrl = $"{_email.FrontendUrl.TrimEnd('/')}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
+        var frontendUrl = (baseUrl ?? _email.FrontendUrl).TrimEnd('/');
+        var resetUrl = $"{frontendUrl}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
 
         try
         {
