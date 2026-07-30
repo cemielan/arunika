@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Card, Typography } from "@heroui/react";
 import { getSectors } from "@/lib/api";
 

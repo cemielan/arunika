@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { Card, Chip, Typography } from "@heroui/react";
 import { getBriefing } from "@/lib/api";
