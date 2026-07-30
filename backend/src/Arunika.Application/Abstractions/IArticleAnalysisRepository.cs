@@ -34,4 +34,10 @@ public interface IArticleAnalysisRepository
     /// Includes the linked <see cref="BriefingItem"/>s and their articles.
     /// </summary>
     Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the most recently generated briefing regardless of date,
+    /// or null if no briefing has ever been generated.
+    /// </summary>
+    Task<Briefing?> GetLatestBriefingAsync(CancellationToken cancellationToken = default);
 }

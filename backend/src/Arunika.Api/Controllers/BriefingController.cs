@@ -41,8 +41,15 @@ public class BriefingController(
         var from = new DateTimeOffset(rangeStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
         var to = new DateTimeOffset(rangeEnd.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(1);
 
-        // Try the cached briefing first.
+        // Try the cached briefing for the requested date first.
         var cached = await articleAnalysisRepository.GetBriefingByDateAsync(rangeEnd, cancellationToken);
+
+        // If no briefing exists for the requested date (e.g. today's job hasn't run
+        // yet or failed due to rate limits), fall back to the most recent briefing.
+        if (cached is null)
+        {
+            cached = await articleAnalysisRepository.GetLatestBriefingAsync(cancellationToken);
+        }
 
         var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
 

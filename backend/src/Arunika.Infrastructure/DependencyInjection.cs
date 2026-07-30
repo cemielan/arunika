@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arunika.Infrastructure;
 
@@ -35,13 +36,40 @@ public static class DependencyInjection
 
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
         services.AddSingleton<GeminiRateLimiter>();
-        services.AddScoped<IAiEnrichmentService, GeminiAiEnrichmentService>();
-        services.AddScoped<IBriefingGenerationService, BriefingGenerationService>();
+        services.AddScoped<GeminiAiEnrichmentService>();
+        services.AddScoped<BriefingGenerationService>();
+
+        services.Configure<OpenRouterOptions>(configuration.GetSection(OpenRouterOptions.SectionName));
+        services.AddScoped<OpenRouterAiEnrichmentService>();
+        services.AddScoped<OpenRouterBriefingGenerationService>();
+
+        services.AddScoped<IAiEnrichmentService>(sp =>
+        {
+            var gemini = sp.GetRequiredService<GeminiAiEnrichmentService>();
+            var openRouter = sp.GetRequiredService<OpenRouterAiEnrichmentService>();
+            var logger = sp.GetRequiredService<ILogger<CompositeAiEnrichmentService>>();
+            return new CompositeAiEnrichmentService([gemini, openRouter], logger);
+        });
+
+        services.AddScoped<IBriefingGenerationService>(sp =>
+        {
+            var gemini = sp.GetRequiredService<BriefingGenerationService>();
+            var openRouter = sp.GetRequiredService<OpenRouterBriefingGenerationService>();
+            var logger = sp.GetRequiredService<ILogger<CompositeBriefingGenerationService>>();
+            return new CompositeBriefingGenerationService([gemini, openRouter], logger);
+        });
+
+        services.AddHttpClient("openrouter", (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value;
+            client.BaseAddress = new Uri(opts.BaseUrl);
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {opts.ApiKey}");
+        });
 
         services.Configure<FinancialModelingPrepOptions>(configuration.GetSection(FinancialModelingPrepOptions.SectionName));
         services.AddHttpClient<INewsFetcher, FinancialModelingPrepNewsFetcher>((sp, client) =>
         {
-            var baseUrl = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FinancialModelingPrepOptions>>().Value.BaseUrl;
+            var baseUrl = sp.GetRequiredService<IOptions<FinancialModelingPrepOptions>>().Value.BaseUrl;
             client.BaseAddress = new Uri(baseUrl);
         });
 

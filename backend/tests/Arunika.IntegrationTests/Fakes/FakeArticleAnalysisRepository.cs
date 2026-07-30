@@ -22,4 +22,7 @@ public class FakeArticleAnalysisRepository : IArticleAnalysisRepository
 
     public Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default)
         => Task.FromResult<Briefing?>(null);
+
+    public Task<Briefing?> GetLatestBriefingAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<Briefing?>(null);
 }
