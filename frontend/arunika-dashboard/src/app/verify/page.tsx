@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { verifyOtp, resendOtp } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function VerifyPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto mt-16 text-center text-muted">Loading...</div>}>
+      <VerifyForm />
+    </Suspense>
+  );
+}
+
+function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
