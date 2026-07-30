@@ -5,7 +5,6 @@ using System.Text;
 using Arunika.Application.Abstractions;
 using Arunika.Domain.Entities;
 using Arunika.Infrastructure.Email;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -14,9 +13,9 @@ namespace Arunika.Infrastructure.Auth;
 
 public class AuthService(
     IUserRepository userRepository,
+    IEmailService emailService,
     IOptions<JwtOptions> jwtOptions,
     IOptions<EmailOptions> emailOptions,
-    IServiceScopeFactory scopeFactory,
     ILogger<AuthService> logger) : IAuthService
 {
     private readonly JwtOptions _jwt = jwtOptions.Value;
@@ -42,11 +41,7 @@ public class AuthService(
         await userRepository.AddAsync(user, cancellationToken);
         await userRepository.SaveChangesAsync(cancellationToken);
 
-        await GenerateAndSaveOtp(user, cancellationToken);
-        SendEmailInBackground(
-            user.Email,
-            "Your Arunika verification code",
-            BuildOtpEmailBody(user.OtpCode!));
+        await GenerateAndSendOtpAsync(user, cancellationToken);
 
         return new AuthResult(true,
             ErrorCode: "EMAIL_VERIFICATION_REQUIRED",
@@ -130,11 +125,7 @@ public class AuthService(
             return new AuthResult(false, ErrorCode: "ALREADY_VERIFIED", ErrorMessage: "Email is already verified.");
         }
 
-        await GenerateAndSaveOtp(user, cancellationToken);
-        SendEmailInBackground(
-            user.Email,
-            "Your Arunika verification code",
-            BuildOtpEmailBody(user.OtpCode!));
+        await GenerateAndSendOtpAsync(user, cancellationToken);
 
         return new AuthResult(true, ErrorMessage: "A new verification code has been sent to your email.");
     }
@@ -154,23 +145,33 @@ public class AuthService(
 
         var resetUrl = $"{_email.FrontendUrl.TrimEnd('/')}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
 
-        SendEmailInBackground(
-            user.Email,
-            "Reset your Arunika password",
-            $"""
-            <!DOCTYPE html>
-            <html><body style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-            <h1 style="font-size: 20px;">Reset your password</h1>
-            <p style="color: #444;">Use the link below to reset your Arunika password. This link expires in 1 hour.</p>
-            <div style="text-align: center; padding: 16px; margin: 16px 0;">
-                <a href="{resetUrl}"
-                   style="display: inline-block; padding: 12px 24px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-                   Reset Password
-                </a>
-            </div>
-            <p style="color: #666; font-size: 13px;">If you did not request a password reset, you can safely ignore this email.</p>
-            </body></html>
-            """);
+        try
+        {
+            await emailService.SendAsync(
+                user.Email,
+                "Reset your Arunika password",
+                $"""
+                <!DOCTYPE html>
+                <html><body style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+                <h1 style="font-size: 20px;">Reset your password</h1>
+                <p style="color: #444;">Use the link below to reset your Arunika password. This link expires in 1 hour.</p>
+                <div style="text-align: center; padding: 16px; margin: 16px 0;">
+                    <a href="{resetUrl}"
+                       style="display: inline-block; padding: 12px 24px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
+                       Reset Password
+                    </a>
+                </div>
+                <p style="color: #666; font-size: 13px;">If you did not request a password reset, you can safely ignore this email.</p>
+                </body></html>
+                """,
+                cancellationToken);
+
+            logger.LogInformation("Password reset email sent to {Email}.", user.Email);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send password reset email to {Email}.", user.Email);
+        }
 
         return new AuthResult(true, ErrorMessage: "If the email is registered, you will receive a password reset link.");
     }
@@ -208,43 +209,35 @@ public class AuthService(
         return new AuthResult(true, ErrorMessage: "Your password has been reset successfully.");
     }
 
-    private async Task GenerateAndSaveOtp(User user, CancellationToken cancellationToken)
+    private async Task GenerateAndSendOtpAsync(User user, CancellationToken cancellationToken)
     {
         var otp = RandomNumberGenerator.GetInt32(100_000, 999_999).ToString();
         user.OtpCode = otp;
         user.OtpExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
         await userRepository.SaveChangesAsync(cancellationToken);
-    }
 
-    private static string BuildOtpEmailBody(string otp)
-    {
-        return $"""
-            <!DOCTYPE html>
-            <html><body style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-            <h1 style="font-size: 20px;">Verify your email</h1>
-            <p style="color: #444;">Use this code to verify your Arunika account:</p>
-            <div style="font-size: 32px; letter-spacing: 8px; font-weight: bold; text-align: center; padding: 16px; background: #f5f5f5; border-radius: 8px; margin: 16px 0;">{otp}</div>
-            <p style="color: #666; font-size: 13px;">This code expires in 15 minutes.</p>
-            </body></html>
-            """;
-    }
-
-    private void SendEmailInBackground(string to, string subject, string htmlBody)
-    {
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                using var scope = scopeFactory.CreateScope();
-                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                await emailService.SendAsync(to, subject, htmlBody);
-                logger.LogInformation("Email sent to {To}: {Subject}", to, subject);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to send email to {To}: {Subject}", to, subject);
-            }
-        });
+            await emailService.SendAsync(
+                user.Email,
+                "Your Arunika verification code",
+                $"""
+                <!DOCTYPE html>
+                <html><body style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+                <h1 style="font-size: 20px;">Verify your email</h1>
+                <p style="color: #444;">Use this code to verify your Arunika account:</p>
+                <div style="font-size: 32px; letter-spacing: 8px; font-weight: bold; text-align: center; padding: 16px; background: #f5f5f5; border-radius: 8px; margin: 16px 0;">{otp}</div>
+                <p style="color: #666; font-size: 13px;">This code expires in 15 minutes.</p>
+                </body></html>
+                """,
+                cancellationToken);
+
+            logger.LogInformation("OTP sent to {Email}.", user.Email);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send OTP email to {Email}.", user.Email);
+        }
     }
 
     private AuthResult GenerateAuthResult(User user)
