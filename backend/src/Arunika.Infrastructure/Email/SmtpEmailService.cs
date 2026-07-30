@@ -20,11 +20,16 @@ public class SmtpEmailService(
             return;
         }
 
+        // SmtpClient.Timeout only applies to synchronous Send(), not
+        // SendMailAsync. Use a CancellationTokenSource to enforce the timeout
+        // on the async path instead.
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(opts.SmtpTimeoutSeconds));
+
         using var client = new SmtpClient(opts.SmtpHost, opts.SmtpPort)
         {
             Credentials = new NetworkCredential(opts.Username, opts.Password),
             EnableSsl = opts.UseSsl,
-            Timeout = opts.SmtpTimeoutSeconds * 1000,
         };
 
         using var message = new MailMessage
@@ -36,7 +41,7 @@ public class SmtpEmailService(
         };
         message.To.Add(to);
 
-        await client.SendMailAsync(message, cancellationToken);
+        await client.SendMailAsync(message, timeoutCts.Token);
 
         logger.LogInformation("Email sent to {To}, subject: {Subject}", to, subject);
     }
