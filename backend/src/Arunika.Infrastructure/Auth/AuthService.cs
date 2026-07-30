@@ -127,6 +127,90 @@ public class AuthService(
         return new AuthResult(true, ErrorMessage: "A new verification code has been sent to your email.");
     }
 
+    public async Task<AuthResult> ForgotPasswordAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByEmailAsync(email, cancellationToken);
+        if (user is null)
+        {
+            return new AuthResult(true, ErrorMessage: "If the email is registered, you will receive a password reset link.");
+        }
+
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        user.ResetToken = token;
+        user.ResetTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(1);
+        await userRepository.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await emailService.SendAsync(
+                user.Email,
+                "Reset your Arunika password",
+                $"""
+                <!DOCTYPE html>
+                <html><body style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+                <h1 style="font-size: 20px;">Reset your password</h1>
+                <p style="color: #444;">Use the link below to reset your Arunika password. This link expires in 1 hour.</p>
+                <div style="text-align: center; padding: 16px; margin: 16px 0;">
+                    <a href="{GetResetUrl(user.Email, token)}"
+                       style="display: inline-block; padding: 12px 24px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
+                       Reset Password
+                    </a>
+                </div>
+                <p style="color: #666; font-size: 13px;">If you did not request a password reset, you can safely ignore this email.</p>
+                </body></html>
+                """,
+                cancellationToken);
+
+            logger.LogInformation("Password reset email sent to {Email}.", user.Email);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send password reset email to {Email}.", user.Email);
+        }
+
+        return new AuthResult(true, ErrorMessage: "If the email is registered, you will receive a password reset link.");
+    }
+
+    public async Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByEmailAsync(email, cancellationToken);
+        if (user is null)
+        {
+            return new AuthResult(false, ErrorCode: "INVALID_REQUEST", ErrorMessage: "Invalid or expired reset link.");
+        }
+
+        if (user.ResetToken is null || user.ResetTokenExpiresAt is null)
+        {
+            return new AuthResult(false, ErrorCode: "NO_RESET_REQUEST", ErrorMessage: "No password reset has been requested.");
+        }
+
+        if (DateTimeOffset.UtcNow > user.ResetTokenExpiresAt.Value)
+        {
+            return new AuthResult(false, ErrorCode: "RESET_TOKEN_EXPIRED", ErrorMessage: "Reset link has expired. Request a new one.");
+        }
+
+        if (!string.Equals(user.ResetToken, token, StringComparison.OrdinalIgnoreCase))
+        {
+            return new AuthResult(false, ErrorCode: "INVALID_RESET_TOKEN", ErrorMessage: "Invalid reset link.");
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.ResetToken = null;
+        user.ResetTokenExpiresAt = null;
+        await userRepository.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Password reset for user {Email}.", email);
+
+        return new AuthResult(true, ErrorMessage: "Your password has been reset successfully.");
+    }
+
+    private string GetResetUrl(string email, string token)
+    {
+        // Determine the frontend URL. In production this would come from config;
+        // for development we use localhost:3000.
+        return $"http://localhost:3000/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+    }
+
     private async Task SendOtpAsync(User user, CancellationToken cancellationToken)
     {
         var otp = RandomNumberGenerator.GetInt32(100_000, 999_999).ToString();

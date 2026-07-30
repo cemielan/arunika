@@ -12,4 +12,7 @@ public class User
     public string? OtpCode { get; set; }
     public DateTimeOffset? OtpExpiresAt { get; set; }
     public bool DigestEnabled { get; set; } = true;
+
+    public string? ResetToken { get; set; }
+    public DateTimeOffset? ResetTokenExpiresAt { get; set; }
 }

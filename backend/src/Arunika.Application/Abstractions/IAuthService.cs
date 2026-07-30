@@ -7,6 +7,8 @@ public interface IAuthService
     Task<AuthResult> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
     Task<AuthResult> VerifyOtpAsync(string email, string otp, CancellationToken cancellationToken = default);
     Task<AuthResult> ResendOtpAsync(string email, CancellationToken cancellationToken = default);
+    Task<AuthResult> ForgotPasswordAsync(string email, CancellationToken cancellationToken = default);
+    Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken = default);
 }
 
 public sealed record AuthResult(
@@ -26,6 +28,10 @@ public sealed record RefreshTokenRequest(string RefreshToken);
 public sealed record VerifyOtpRequest(string Email, string Otp);
 
 public sealed record ResendOtpRequest(string Email);
+
+public sealed record ForgotPasswordRequest(string Email);
+
+public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
 
 public sealed record AuthResponse(string AccessToken, string RefreshToken, UserDto User);
 

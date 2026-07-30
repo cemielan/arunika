@@ -69,6 +69,29 @@ public class AuthController(IAuthService authService) : ControllerBase
         return Ok(new ApiResponse<AuthResponse>(new AuthResponse(result.AccessToken!, result.RefreshToken!, result.User!)));
     }
 
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.ForgotPasswordAsync(request.Email, cancellationToken);
+        return Ok(new ApiResponse<object>(new { }));
+    }
+
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword, cancellationToken);
+        if (!result.Success)
+        {
+            return BadRequest(new ApiErrorEnvelope(new ApiErrorDetail(result.ErrorCode!, result.ErrorMessage!)));
+        }
+
+        return Ok(new ApiResponse<object>(new { }));
+    }
+
     [HttpPost("resend-otp")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status400BadRequest)]

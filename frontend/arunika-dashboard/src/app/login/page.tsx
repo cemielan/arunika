@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { login as apiLogin } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ApiRequestError } from "@/lib/api";
 
 type FieldErrors = {
   email?: string;
@@ -41,6 +42,10 @@ export default function LoginPage() {
       router.push("/");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
+      if (err instanceof ApiRequestError && message.includes("verify your email")) {
+        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        return;
+      }
       showNotification({ status: "danger", title: "Sign in failed", message });
     } finally {
       setLoading(false);
@@ -82,6 +87,12 @@ export default function LoginPage() {
               placeholder="Your password"
             />
             {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
+          </div>
+
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-sm font-medium text-accent hover:underline">
+              Forgot password?
+            </Link>
           </div>
 
           <Button type="submit" variant="primary" isDisabled={loading}>
