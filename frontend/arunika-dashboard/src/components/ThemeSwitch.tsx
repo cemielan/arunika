@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { Button, useTheme } from "@heroui/react";
 import { motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
@@ -15,7 +15,7 @@ export function ThemeSwitch() {
   // render matches the server's (always non-dark) output; the real theme is
   // applied on the next render, after hydration has committed.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => { startTransition(() => setMounted(true)); }, []);
   const isDark = mounted && resolvedTheme === "dark";
 
   return (

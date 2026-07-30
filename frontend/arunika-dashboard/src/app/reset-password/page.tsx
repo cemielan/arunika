@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { resetPassword } from "@/lib/api";
@@ -15,7 +15,6 @@ export default function ResetPasswordPage() {
 }
 
 function ResetForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
   const token = searchParams.get("token") ?? "";

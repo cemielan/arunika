@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Button,
@@ -92,7 +92,7 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
 
   // Sync search input when URL changes externally (browser back/forward).
   useEffect(() => {
-    setSearchInput(search ?? "");
+    startTransition(() => setSearchInput(search ?? ""));
   }, [search]);
 
   const [range, setRange] = useState<{

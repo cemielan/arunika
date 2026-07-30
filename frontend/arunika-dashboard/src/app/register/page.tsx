@@ -15,7 +15,7 @@ type FieldErrors = {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login, showNotification } = useAuth();
+  const { showNotification } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
