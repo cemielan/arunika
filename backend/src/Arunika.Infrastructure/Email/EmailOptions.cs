@@ -12,5 +12,5 @@ public class EmailOptions
     public string FromAddress { get; set; } = "noreply@arunika.app";
     public string FromName { get; set; } = "Arunika";
     public string FrontendUrl { get; set; } = "http://localhost:3000";
-    public int SmtpTimeoutSeconds { get; set; } = 10;
+    public int SmtpTimeoutSeconds { get; set; } = 30;
 }
