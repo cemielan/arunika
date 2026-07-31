@@ -31,28 +31,28 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 var supabaseSection = builder.Configuration.GetSection(SupabaseOptions.SectionName);
 var supabaseOptions = supabaseSection.Get<SupabaseOptions>()
     ?? throw new InvalidOperationException("Missing 'Supabase' configuration section.");
-if (string.IsNullOrWhiteSpace(supabaseOptions.Url) || string.IsNullOrWhiteSpace(supabaseOptions.JwtSecret))
+if (string.IsNullOrWhiteSpace(supabaseOptions.Url))
 {
     throw new InvalidOperationException(
-        "Supabase:Url and Supabase:JwtSecret are not configured. " +
-        "Set them via environment variables (Supabase__Url, Supabase__JwtSecret). " +
-        "Get the JWT secret from the Supabase dashboard under Settings -> API. " +
-        "Note: the dashboard shows it URL-encoded; decode it if it contains %XX sequences.");
+        "Supabase:Url is not configured. Set it via the environment variable (Supabase__Url) " +
+        "to your project URL from the Supabase dashboard under Settings -> API.");
 }
 builder.Services.Configure<SupabaseOptions>(supabaseSection);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Supabase signs tokens with asymmetric keys (RS256) and exposes its
+        // public keys via OpenID discovery, so no shared secret is needed:
+        // the authority's JWKS is fetched automatically for validation.
+        options.Authority = $"{supabaseOptions.Url.TrimEnd('/')}/auth/v1";
+        options.Audience = "authenticated";
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = $"{supabaseOptions.Url.TrimEnd('/')}/auth/v1",
-            ValidAudience = "authenticated",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(supabaseOptions.JwtSecret)),
             ClockSkew = TimeSpan.FromSeconds(30),
         };
     });
