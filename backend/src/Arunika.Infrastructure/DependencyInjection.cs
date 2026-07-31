@@ -86,7 +86,12 @@ public static class DependencyInjection
         services.AddScoped<SendEmailDigestJob>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
-        services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddHttpClient<BrevoEmailService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.brevo.com/v3");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<BrevoEmailService>());
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()
