@@ -88,7 +88,7 @@ public static class DependencyInjection
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.AddHttpClient<BrevoEmailService>(client =>
         {
-            client.BaseAddress = new Uri("https://api.brevo.com/v3");
+            client.BaseAddress = new Uri("https://api.brevo.com/v3/");
             client.Timeout = TimeSpan.FromSeconds(15);
         });
         services.AddScoped<IEmailService>(sp => sp.GetRequiredService<BrevoEmailService>());
