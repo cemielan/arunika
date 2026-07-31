@@ -11,7 +11,7 @@ public class BrevoEmailService(
     IOptions<EmailOptions> options,
     ILogger<BrevoEmailService> logger) : IEmailService
 {
-    private const string SendEndpoint = "/smtp/email";
+    private const string SendEndpoint = "smtp/email";
 
     public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
