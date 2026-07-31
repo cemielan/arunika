@@ -30,6 +30,7 @@ public class SmtpEmailService(
         {
             Credentials = new NetworkCredential(opts.Username, opts.Password),
             EnableSsl = opts.UseSsl,
+            Timeout = opts.SmtpTimeoutSeconds * 1000,
         };
 
         using var message = new MailMessage

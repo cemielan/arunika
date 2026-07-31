@@ -41,7 +41,7 @@ public class AuthService(
         await userRepository.AddAsync(user, cancellationToken);
         await userRepository.SaveChangesAsync(cancellationToken);
 
-        await GenerateAndSendOtpAsync(user, cancellationToken);
+        _ = await GenerateAndSendOtpAsync(user, cancellationToken);
 
         return new AuthResult(true,
             ErrorCode: "EMAIL_VERIFICATION_REQUIRED",
@@ -125,7 +125,11 @@ public class AuthService(
             return new AuthResult(false, ErrorCode: "ALREADY_VERIFIED", ErrorMessage: "Email is already verified.");
         }
 
-        await GenerateAndSendOtpAsync(user, cancellationToken);
+        var sendError = await GenerateAndSendOtpAsync(user, cancellationToken);
+        if (sendError is not null)
+        {
+            return new AuthResult(false, ErrorCode: "EMAIL_SEND_FAILED", ErrorMessage: sendError);
+        }
 
         return new AuthResult(true, ErrorMessage: "A new verification code has been sent to your email.");
     }
@@ -210,7 +214,7 @@ public class AuthService(
         return new AuthResult(true, ErrorMessage: "Your password has been reset successfully.");
     }
 
-    private async Task GenerateAndSendOtpAsync(User user, CancellationToken cancellationToken)
+    private async Task<string?> GenerateAndSendOtpAsync(User user, CancellationToken cancellationToken)
     {
         var otp = RandomNumberGenerator.GetInt32(100_000, 999_999).ToString();
         user.OtpCode = otp;
@@ -234,10 +238,12 @@ public class AuthService(
                 cancellationToken);
 
             logger.LogInformation("OTP sent to {Email}.", user.Email);
+            return null;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to send OTP email to {Email}.", user.Email);
+            return $"Failed to send the verification code: {ex.Message}";
         }
     }
 
