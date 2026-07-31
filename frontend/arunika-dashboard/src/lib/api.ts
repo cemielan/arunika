@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5097";
 
 export type UserDto = {
@@ -236,67 +238,79 @@ function emptyBriefing(date?: string): Briefing {
  * rolling 7-day window (`BriefingController.WindowDays`) so the two never
  * disagree about what counts as "recent".
  */
-export async function getBriefing(date?: string): Promise<Briefing> {
-  const query = date ? `?date=${encodeURIComponent(date)}` : "";
-  const result = await apiGet<RawBriefing>(`/v1/briefing${query}`, 300);
-  if ("notFound" in result) {
-    return emptyBriefing(date);
-  }
+export const getBriefing = unstable_cache(
+  async (date?: string): Promise<Briefing> => {
+    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    const result = await apiGet<RawBriefing>(`/v1/briefing${query}`, 300);
+    if ("notFound" in result) {
+      return emptyBriefing(date);
+    }
 
-  const { marketPulse, executiveSummary, overallSentiment, riskLevel, ...rest } = result.data;
-  return {
-    ...rest,
-    executiveSummary,
-    overallSentiment,
-    riskLevel,
-    marketPulse: {
-      sentiment: marketPulse.sentiment,
-      bullishCount: marketPulse.bullishCount,
-      bearishCount: marketPulse.bearishCount,
-      neutralCount: marketPulse.neutralCount,
-      totalArticles: marketPulse.totalArticles,
-      averageImpact: marketPulse.averageImpactScore,
-      confidence: marketPulse.confidence,
-    },
-  };
-}
+    const { marketPulse, executiveSummary, overallSentiment, riskLevel, ...rest } = result.data;
+    return {
+      ...rest,
+      executiveSummary,
+      overallSentiment,
+      riskLevel,
+      marketPulse: {
+        sentiment: marketPulse.sentiment,
+        bullishCount: marketPulse.bullishCount,
+        bearishCount: marketPulse.bearishCount,
+        neutralCount: marketPulse.neutralCount,
+        totalArticles: marketPulse.totalArticles,
+        averageImpact: marketPulse.averageImpactScore,
+        confidence: marketPulse.confidence,
+      },
+    };
+  },
+  ["briefing"],
+  { revalidate: 300 },
+);
 
 export type NewsSortBy = "date" | "impact";
 
-export async function getNewsFeed(params: {
-  category?: string;
-  /** Full-text search query against article title and content. */
-  search?: string;
-  /** Published-date range filter, inclusive, formatted "yyyy-MM-dd". */
-  from?: string;
-  to?: string;
-  sortBy?: NewsSortBy;
-  page?: number;
-  pageSize?: number;
-}): Promise<{ items: NewsListItem[]; meta: PageMeta }> {
-  const search = new URLSearchParams();
-  if (params.category) search.set("category", params.category);
-  if (params.search) search.set("search", params.search);
-  if (params.from) search.set("from", params.from);
-  if (params.to) search.set("to", params.to);
-  if (params.sortBy) search.set("sortBy", params.sortBy);
-  search.set("page", String(params.page ?? 1));
-  search.set("pageSize", String(params.pageSize ?? 20));
+export const getNewsFeed = unstable_cache(
+  async (params: {
+    category?: string;
+    /** Full-text search query against article title and content. */
+    search?: string;
+    /** Published-date range filter, inclusive, formatted "yyyy-MM-dd". */
+    from?: string;
+    to?: string;
+    sortBy?: NewsSortBy;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ items: NewsListItem[]; meta: PageMeta }> => {
+    const search = new URLSearchParams();
+    if (params.category) search.set("category", params.category);
+    if (params.search) search.set("search", params.search);
+    if (params.from) search.set("from", params.from);
+    if (params.to) search.set("to", params.to);
+    if (params.sortBy) search.set("sortBy", params.sortBy);
+    search.set("page", String(params.page ?? 1));
+    search.set("pageSize", String(params.pageSize ?? 20));
 
-  const result = await apiGet<NewsListItem[]>(`/v1/news?${search.toString()}`, 60);
-  if ("notFound" in result) {
-    return { items: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } };
-  }
-  return { items: result.data, meta: result.meta as PageMeta };
-}
+    const result = await apiGet<NewsListItem[]>(`/v1/news?${search.toString()}`, 60);
+    if ("notFound" in result) {
+      return { items: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } };
+    }
+    return { items: result.data, meta: result.meta as PageMeta };
+  },
+  ["news-feed"],
+  { revalidate: 60 },
+);
 
-export async function getArticleDetail(id: string): Promise<ArticleDetail | null> {
-  const result = await apiGet<ArticleDetail>(`/v1/articles/${id}`, 60);
-  if ("notFound" in result) {
-    return null;
-  }
-  return result.data;
-}
+export const getArticleDetail = unstable_cache(
+  async (id: string): Promise<ArticleDetail | null> => {
+    const result = await apiGet<ArticleDetail>(`/v1/articles/${id}`, 60);
+    if ("notFound" in result) {
+      return null;
+    }
+    return result.data;
+  },
+  ["article-detail"],
+  { revalidate: 60 },
+);
 
 export async function verifyOtp(email: string, otp: string): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/v1/auth/verify-otp`, {
@@ -363,12 +377,16 @@ export type SectorAggregation = {
   dominantSentiment: string;
 };
 
-export async function getSectors(): Promise<SectorAggregation[]> {
-  const result = await apiGet<SectorAggregation[]>("/v1/sectors", 300);
-  if ("notFound" in result) {
-    return [];
-  }
-  return result.data;
-}
+export const getSectors = unstable_cache(
+  async (): Promise<SectorAggregation[]> => {
+    const result = await apiGet<SectorAggregation[]>("/v1/sectors", 300);
+    if ("notFound" in result) {
+      return [];
+    }
+    return result.data;
+  },
+  ["sectors"],
+  { revalidate: 300 },
+);
 
 

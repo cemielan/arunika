@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
+import { Button, Card, ErrorMessage, InputOTP, Typography } from "@heroui/react";
 import { verifyOtp, resendOtp } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -73,16 +73,27 @@ function VerifyForm() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1">
             <Typography.Paragraph size="sm" weight="medium">Verification Code</Typography.Paragraph>
-            <input
-              type="text"
-              inputMode="numeric"
+            <InputOTP
               maxLength={6}
               value={otp}
-              onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setOtpError(undefined); }}
-              className={`rounded-lg border bg-background px-3 py-2 text-lg text-center tracking-[8px] outline-none focus:border-accent ${otpError ? "border-danger" : "border-border"}`}
-              placeholder="000000"
+              onChange={(value) => { setOtp(value.replace(/\D/g, "").slice(0, 6)); setOtpError(undefined); }}
+              isInvalid={!!otpError}
+              isDisabled={loading}
+              className="justify-center"
               autoFocus
-            />
+            >
+              <InputOTP.Group>
+                <InputOTP.Slot index={0} />
+                <InputOTP.Slot index={1} />
+                <InputOTP.Slot index={2} />
+              </InputOTP.Group>
+              <InputOTP.Separator />
+              <InputOTP.Group>
+                <InputOTP.Slot index={3} />
+                <InputOTP.Slot index={4} />
+                <InputOTP.Slot index={5} />
+              </InputOTP.Group>
+            </InputOTP>
             {otpError && <ErrorMessage>{otpError}</ErrorMessage>}
           </div>
 

@@ -32,7 +32,7 @@ export function NavBar() {
   const [pillTarget, setPillTarget] = useState({ left: 0, width: 0 });
 
   useLayoutEffect(() => {
-    if (window.innerWidth < 640) return;
+    if (window.innerWidth < 768) return;
     const track = trackRef.current;
     const activeEl = linkRefs.current[activeHref];
     if (track && activeEl) {
@@ -85,7 +85,7 @@ export function NavBar() {
         {/* Desktop nav */}
         <nav
           ref={trackRef}
-          className="relative hidden items-center gap-1 rounded-full bg-surface-secondary p-1 sm:flex"
+          className="relative hidden items-center gap-1 rounded-full bg-surface-secondary p-1 md:flex"
         >
           <span
             aria-hidden
@@ -106,7 +106,7 @@ export function NavBar() {
                   linkRefs.current[href] = el;
                 }}
                 className={cn(
-                  "relative z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-200",
+                  "relative z-10 flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors duration-200 lg:px-3",
                   isActive ? "text-foreground" : "text-muted hover:text-foreground",
                 )}
               >
@@ -118,10 +118,10 @@ export function NavBar() {
         </nav>
 
         {/* Desktop right section */}
-        <div className="hidden items-center gap-3 sm:flex">
+        <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated ? (
             <>
-              <span className="flex items-center gap-1.5 text-sm text-muted">
+              <span className="hidden items-center gap-1.5 text-sm text-muted lg:flex">
                 <User className="size-3.5" />
                 <span className="max-w-28 truncate">{user?.email}</span>
               </span>
@@ -148,7 +148,7 @@ export function NavBar() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="flex items-center sm:hidden"
+          className="flex items-center md:hidden"
           aria-label="Toggle menu"
         >
           {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -157,7 +157,7 @@ export function NavBar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="border-t border-border px-4 pb-4 pt-2 sm:hidden">
+        <div className="border-t border-border px-4 pb-4 pt-2 md:hidden">
           <div className="flex flex-col gap-2">
             {NAV_LINKS.map(({ href, label, icon: Icon }) => {
               const isActive = href === activeHref;
