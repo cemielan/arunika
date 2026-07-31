@@ -1,8 +1,10 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, ErrorMessage, InputOTP, Typography } from "@heroui/react";
+import { supabase } from "@/lib/supabase";
+import { upsertMe } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function VerifyPage() {
@@ -22,6 +24,35 @@ function VerifyForm() {
   const [otpError, setOtpError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    const tokenHash = searchParams.get("token_hash");
+    const type = searchParams.get("type") as "signup" | "invite" | "magiclink" | "recovery" | "email_change" | null;
+    if (!tokenHash || !type) return;
+
+    let cancelled = false;
+    (async () => {
+      const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+      if (cancelled) return;
+      if (error) {
+        setOtpError("The confirmation link is invalid or expired. Enter the code from the email instead.");
+        return;
+      }
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        try {
+          await upsertMe(data.session.access_token);
+        } catch {
+          // Profile sync feeds the daily digest; failure here is non-critical.
+        }
+      }
+      showNotification({ status: "success", title: "Email verified", message: "Your account is ready." });
+      router.push("/");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router, searchParams, showNotification]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

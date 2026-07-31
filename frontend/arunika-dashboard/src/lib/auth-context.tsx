@@ -91,7 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [syncProfile]);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/verify`,
+      },
+    });
     if (error) throw new Error(friendlyAuthError(error));
   }, []);
 
