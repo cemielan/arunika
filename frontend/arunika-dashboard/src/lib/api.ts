@@ -2,18 +2,6 @@ import { unstable_cache } from "next/cache";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5097";
 
-export type UserDto = {
-  id: string;
-  email: string;
-  role: string;
-};
-
-export type AuthResponse = {
-  accessToken: string;
-  refreshToken: string;
-  user: UserDto;
-};
-
 export type ApiErrorEnvelope = { error: { code: string; message: string } };
 
 export type PageMeta = {
@@ -117,42 +105,6 @@ export const CATEGORIES = [
   "Commodities",
   "Crypto",
 ] as const;
-
-async function authFetch(path: string, email: string, password: string, action: string): Promise<AuthResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      let message = `${action} failed`;
-      try {
-        const body = await res.json() as ApiErrorEnvelope;
-        message = body.error?.message ?? message;
-      } catch { }
-      throw new ApiRequestError(message, res.status);
-    }
-
-    const body = await res.json() as { data: AuthResponse };
-    return body.data;
-  } catch (err) {
-    if (err instanceof ApiRequestError) throw err;
-    throw new ApiRequestError(
-      `${action} failed — unable to reach server.`,
-      0,
-    );
-  }
-}
-
-export function register(email: string, password: string): Promise<AuthResponse> {
-  return authFetch("/v1/auth/register", email, password, "Sign up");
-}
-
-export function login(email: string, password: string): Promise<AuthResponse> {
-  return authFetch("/v1/auth/login", email, password, "Sign in");
-}
 
 export class ApiRequestError extends Error {
   constructor(
@@ -312,59 +264,23 @@ export const getArticleDetail = unstable_cache(
   { revalidate: 60 },
 );
 
-export async function verifyOtp(email: string, otp: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE_URL}/v1/auth/verify-otp`, {
+export async function upsertMe(token: string): Promise<{ id: string; email: string; role: string }> {
+  const res = await fetch(`${API_BASE_URL}/v1/users/me`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp }),
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) {
-    const body = await res.json() as ApiErrorEnvelope;
-    throw new ApiRequestError(body.error?.message ?? "Verification failed", res.status);
+    let message = "Failed to sync profile";
+    try {
+      const body = await res.json() as ApiErrorEnvelope;
+      message = body.error?.message ?? message;
+    } catch { }
+    throw new ApiRequestError(message, res.status);
   }
 
-  const body = await res.json() as { data: AuthResponse };
+  const body = await res.json() as { data: { id: string; email: string; role: string } };
   return body.data;
-}
-
-export async function forgotPassword(email: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/v1/auth/forgot-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json() as ApiErrorEnvelope;
-    throw new ApiRequestError(body.error?.message ?? "Failed to send reset email", res.status);
-  }
-}
-
-export async function resetPassword(email: string, token: string, newPassword: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/v1/auth/reset-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, token, newPassword }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json() as ApiErrorEnvelope;
-    throw new ApiRequestError(body.error?.message ?? "Failed to reset password", res.status);
-  }
-}
-
-export async function resendOtp(email: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/v1/auth/resend-otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json() as ApiErrorEnvelope;
-    throw new ApiRequestError(body.error?.message ?? "Failed to resend code", res.status);
-  }
 }
 
 export type SectorAggregation = {

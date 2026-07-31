@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, ErrorMessage, InputOTP, Typography } from "@heroui/react";
-import { verifyOtp, resendOtp } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function VerifyPage() {
@@ -18,7 +17,7 @@ function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
-  const { login, showNotification } = useAuth();
+  const { verifyOtp, resendOtp, showNotification } = useAuth();
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -35,8 +34,7 @@ function VerifyForm() {
     setLoading(true);
 
     try {
-      const result = await verifyOtp(email, otp);
-      login(result.accessToken, result.refreshToken, result.user);
+      await verifyOtp(email, otp);
       showNotification({ status: "success", title: "Email verified", message: "Your account is ready." });
       router.push("/");
     } catch (err) {

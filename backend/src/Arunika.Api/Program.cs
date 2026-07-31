@@ -28,16 +28,18 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 
 // Add services to the container.
 
-var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
-var jwtOptions = jwtSection.Get<JwtOptions>()
-    ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
-if (string.IsNullOrWhiteSpace(jwtOptions.Secret))
+var supabaseSection = builder.Configuration.GetSection(SupabaseOptions.SectionName);
+var supabaseOptions = supabaseSection.Get<SupabaseOptions>()
+    ?? throw new InvalidOperationException("Missing 'Supabase' configuration section.");
+if (string.IsNullOrWhiteSpace(supabaseOptions.Url) || string.IsNullOrWhiteSpace(supabaseOptions.JwtSecret))
 {
     throw new InvalidOperationException(
-        "Jwt:Secret is not configured. Set it via environment variable, user-secrets, or appsettings. " +
-        "Generate a key with: dotnet user-secrets set \"Jwt:Secret\" \"your-32-char-plus-key\"");
+        "Supabase:Url and Supabase:JwtSecret are not configured. " +
+        "Set them via environment variables (Supabase__Url, Supabase__JwtSecret). " +
+        "Get the JWT secret from the Supabase dashboard under Settings -> API. " +
+        "Note: the dashboard shows it URL-encoded; decode it if it contains %XX sequences.");
 }
-builder.Services.Configure<JwtOptions>(jwtSection);
+builder.Services.Configure<SupabaseOptions>(supabaseSection);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -48,10 +50,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtOptions.Issuer,
-            ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
-            ClockSkew = TimeSpan.Zero,
+            ValidIssuer = $"{supabaseOptions.Url.TrimEnd('/')}/auth/v1",
+            ValidAudience = "authenticated",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(supabaseOptions.JwtSecret)),
+            ClockSkew = TimeSpan.FromSeconds(30),
         };
     });
 

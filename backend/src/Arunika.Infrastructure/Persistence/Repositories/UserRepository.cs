@@ -19,4 +19,20 @@ public class UserRepository(ArunikaDbContext dbContext) : IUserRepository
         => await dbContext.Users
             .Where(u => u.EmailVerified && u.DigestEnabled)
             .ToListAsync(cancellationToken);
+
+    public async Task UpsertAsync(User user, CancellationToken cancellationToken = default)
+    {
+        var existing = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken)
+            ?? await dbContext.Users.FirstOrDefaultAsync(u => u.Email == user.Email, cancellationToken);
+
+        if (existing is null)
+        {
+            await dbContext.Users.AddAsync(user, cancellationToken);
+            return;
+        }
+
+        existing.Email = user.Email;
+        existing.EmailVerified = user.EmailVerified;
+        existing.Role = user.Role;
+    }
 }

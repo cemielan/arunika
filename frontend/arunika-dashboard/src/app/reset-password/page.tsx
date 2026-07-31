@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
-import { resetPassword } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+
+type VerifyOtpType = "email" | "sms" | "recovery" | "invite" | "magiclink" | "email_change" | "phone_change";
 
 export default function ResetPasswordPage() {
   return (
@@ -16,14 +18,67 @@ export default function ResetPasswordPage() {
 
 function ResetForm() {
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") ?? "";
-  const token = searchParams.get("token") ?? "";
+  const emailParam = searchParams.get("email") ?? "";
 
+  const [mode, setMode] = useState<"verifying" | "manual" | "new-password">("verifying");
+  const [email, setEmail] = useState(emailParam);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState<string | undefined>();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   const [loading, setLoading] = useState(false);
   const [reset, setReset] = useState(false);
+
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.substring(1));
+    const tokenHash = hash.get("token_hash");
+    const type = hash.get("type") as VerifyOtpType | null;
+
+    if (!tokenHash || !type) {
+      const id = window.setTimeout(() => setMode("manual"), 0);
+      return () => window.clearTimeout(id);
+    }
+
+    let cancelled = false;
+    supabase.auth
+      .verifyOtp({ token_hash: tokenHash, type })
+      .then(({ error }) => {
+        if (cancelled) return;
+        if (error) {
+          setMode("manual");
+          setCodeError("The reset link is invalid or expired. Enter the code from the email instead.");
+        } else {
+          setMode("new-password");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim() || !code.trim()) {
+      setCodeError("Enter your email and the 6-digit code.");
+      return;
+    }
+
+    setLoading(true);
+    setCodeError(undefined);
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code, type: "recovery" });
+      if (error) throw new Error(error.message);
+      setMode("new-password");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Verification failed";
+      setCodeError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const validate = (): boolean => {
     const errors: { password?: string; confirmPassword?: string } = {};
@@ -35,19 +90,16 @@ function ResetForm() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
-    if (!email || !token) {
-      setFieldErrors({ password: "Invalid reset link." });
-      return;
-    }
 
     setLoading(true);
 
     try {
-      await resetPassword(email, token, password);
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw new Error(error.message);
+      await supabase.auth.signOut();
       setReset(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to reset password";
@@ -80,41 +132,73 @@ function ResetForm() {
       <div className="text-center">
         <Typography.Heading level={1} className="text-2xl">Reset your password</Typography.Heading>
         <Typography.Paragraph color="muted" className="mt-1">
-          Enter your new password for <strong>{email}</strong>.
+          {mode === "new-password" ? "Choose a new password for your account." : "Enter the 6-digit code from the reset email."}
         </Typography.Paragraph>
       </div>
 
-      <Card variant="default" className="p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">New Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
-              placeholder="Min. 8 characters"
-            />
-            {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
-          </div>
+      {mode === "manual" ? (
+        <Card variant="default" className="p-6">
+          <form onSubmit={handleVerifyCode} className="flex flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1">
+              <Typography.Paragraph size="sm" weight="medium">Email</Typography.Paragraph>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setCodeError(undefined); }}
+                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${codeError ? "border-danger" : "border-border"}`}
+                placeholder="you@example.com"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Typography.Paragraph size="sm" weight="medium">Verification Code</Typography.Paragraph>
+              <input
+                value={code}
+                onChange={(e) => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(undefined); }}
+                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${codeError ? "border-danger" : "border-border"}`}
+                placeholder="6-digit code"
+                inputMode="numeric"
+                maxLength={6}
+              />
+              {codeError && <ErrorMessage>{codeError}</ErrorMessage>}
+            </div>
+            <Button type="submit" variant="primary" isDisabled={loading}>
+              {loading ? "Verifying..." : "Continue"}
+            </Button>
+          </form>
+        </Card>
+      ) : (
+        <Card variant="default" className="p-6">
+          <form onSubmit={handleReset} className="flex flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1">
+              <Typography.Paragraph size="sm" weight="medium">New Password</Typography.Paragraph>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
+                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
+                placeholder="Min. 8 characters"
+              />
+              {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
+            </div>
 
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Confirm Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
-              placeholder="Repeat your password"
-            />
-            {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
-          </div>
+            <div className="flex flex-col gap-1">
+              <Typography.Paragraph size="sm" weight="medium">Confirm Password</Typography.Paragraph>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
+                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
+                placeholder="Repeat your password"
+              />
+              {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
+            </div>
 
-          <Button type="submit" variant="primary" isDisabled={loading}>
-            {loading ? "Resetting..." : "Reset password"}
-          </Button>
-        </form>
-      </Card>
+            <Button type="submit" variant="primary" isDisabled={loading}>
+              {loading ? "Resetting..." : "Reset password"}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       <Typography.Paragraph size="sm" color="muted" className="text-center">
         <Link href="/login" className="font-medium text-accent hover:underline">

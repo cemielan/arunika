@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
-import { login as apiLogin } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { ApiRequestError } from "@/lib/api";
 
 type FieldErrors = {
   email?: string;
@@ -15,7 +13,7 @@ type FieldErrors = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, showNotification } = useAuth();
+  const { signIn, showNotification } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -36,13 +34,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await apiLogin(email, password);
-      login(result.accessToken, result.refreshToken, result.user);
+      await signIn(email, password);
       showNotification({ status: "success", title: "Welcome back", message: "You have been signed in successfully." });
       router.push("/");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
-      if (err instanceof ApiRequestError && message.includes("verify your email")) {
+      if (message.toLowerCase().includes("verify your email")) {
         router.push(`/verify?email=${encodeURIComponent(email)}`);
         return;
       }

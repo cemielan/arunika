@@ -32,8 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IArticleAnalysisRepository, ArticleAnalysisRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
 
-        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
-        services.AddScoped<IAuthService, AuthService>();
+        services.Configure<SupabaseOptions>(configuration.GetSection(SupabaseOptions.SectionName));
 
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
         services.AddSingleton<GeminiRateLimiter>();

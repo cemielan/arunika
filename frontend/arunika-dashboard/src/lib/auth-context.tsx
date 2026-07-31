@@ -2,13 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { UserDto } from "./api";
+import type { User } from "@supabase/supabase-js";
 import { Alert } from "@heroui/react";
-
-type AuthState = {
-  user: UserDto | null;
-  accessToken: string | null;
-};
+import { supabase } from "./supabase";
+import { upsertMe } from "./api";
 
 export type Notification = {
   status: "danger" | "success";
@@ -16,10 +13,20 @@ export type Notification = {
   message: string;
 };
 
-type AuthContextValue = AuthState & {
-  login: (token: string, refreshToken: string, user: UserDto) => void;
-  logout: () => void;
+type AppUser = {
+  id: string;
+  email: string;
+};
+
+type AuthContextValue = {
+  user: AppUser | null;
   isAuthenticated: boolean;
+  ready: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  verifyOtp: (email: string, token: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
   showNotification: (n: Notification) => void;
   dismissNotification: () => void;
   notification: Notification | null;
@@ -27,24 +34,36 @@ type AuthContextValue = AuthState & {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY_TOKEN = "arunika_access_token";
-const STORAGE_KEY_REFRESH = "arunika_refresh_token";
-const STORAGE_KEY_USER = "arunika_user";
+function toAppUser(user: User | null): AppUser | null {
+  return user?.email ? { id: user.id, email: user.email } : null;
+}
+
+function friendlyAuthError(error: { message: string } | null): string {
+  if (!error) return "Something went wrong. Please try again.";
+  const message = error.message;
+  if (message.includes("Invalid login credentials")) return "Invalid email or password.";
+  if (message.includes("User already registered")) {
+    return "An account with this email already exists. Check your inbox for the verification code.";
+  }
+  if (message.includes("Email not confirmed")) return "Please verify your email first.";
+  return message;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(() => {
-    if (typeof window === "undefined") return { user: null, accessToken: null };
-    try {
-      const token = localStorage.getItem(STORAGE_KEY_TOKEN);
-      const userStr = localStorage.getItem(STORAGE_KEY_USER);
-      if (token && userStr) {
-        return { user: JSON.parse(userStr) as UserDto, accessToken: token };
-      }
-    } catch { }
-    return { user: null, accessToken: null };
-  });
-
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [ready, setReady] = useState(false);
   const [notification, setNotification] = useState<Notification | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(toAppUser(data.session?.user ?? null));
+      setReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(toAppUser(session?.user ?? null));
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   const dismissNotification = useCallback(() => setNotification(null), []);
 
@@ -54,25 +73,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [notification, dismissNotification]);
 
-  const login = useCallback((token: string, _refreshToken: string, user: UserDto) => {
-    localStorage.setItem(STORAGE_KEY_TOKEN, token);
-    localStorage.setItem(STORAGE_KEY_REFRESH, _refreshToken);
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
-    setState({ user, accessToken: token });
+  const syncProfile = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    try {
+      await upsertMe(token);
+    } catch {
+      // Profile sync feeds the daily digest; failure here is non-critical.
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY_TOKEN);
-    localStorage.removeItem(STORAGE_KEY_REFRESH);
-    localStorage.removeItem(STORAGE_KEY_USER);
-    setState({ user: null, accessToken: null });
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(friendlyAuthError(error));
+    await syncProfile();
+  }, [syncProfile]);
+
+  const signUp = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw new Error(friendlyAuthError(error));
   }, []);
 
-  const showNotification = useCallback((n: Notification) => setNotification(n), []);
+  const verifyOtp = useCallback(async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    if (error) throw new Error(friendlyAuthError(error));
+    await syncProfile();
+  }, [syncProfile]);
+
+  const resendOtp = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) throw new Error(friendlyAuthError(error));
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  }, []);
 
   return (
     <AuthContext.Provider
-      value={{ ...state, login, logout, isAuthenticated: state.user !== null, showNotification, dismissNotification, notification }}
+      value={{
+        user,
+        isAuthenticated: user !== null,
+        ready,
+        signIn,
+        signUp,
+        verifyOtp,
+        resendOtp,
+        signOut,
+        showNotification: setNotification,
+        dismissNotification,
+        notification,
+      }}
     >
       {children}
     </AuthContext.Provider>

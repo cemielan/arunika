@@ -19,7 +19,7 @@ const NAV_LINKS = [
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, user, logout, showNotification } = useAuth();
+  const { isAuthenticated, ready, user, signOut, showNotification } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const activeIndex = NAV_LINKS.findIndex(({ href }) =>
@@ -46,8 +46,8 @@ export function NavBar() {
   const [animLeft, animWidth] = values;
   const stretch = Math.min(Math.abs(velocities[0]) / 900, 0.12);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     showNotification({ status: "success", title: "Signed out", message: "You have been signed out successfully." });
     setMenuOpen(false);
     router.push("/");
@@ -119,7 +119,7 @@ export function NavBar() {
 
         {/* Desktop right section */}
         <div className="hidden items-center gap-3 md:flex">
-          {isAuthenticated ? (
+          {!ready ? null : isAuthenticated ? (
             <>
               <span className="hidden items-center gap-1.5 text-sm text-muted lg:flex">
                 <User className="size-3.5" />
@@ -177,7 +177,7 @@ export function NavBar() {
               );
             })}
             <hr className="border-border" />
-            {isAuthenticated ? (
+            {!ready ? null : isAuthenticated ? (
               <>
                 <span className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
                   <User className="size-4" />

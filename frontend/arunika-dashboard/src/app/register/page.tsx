@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
-import { register as apiRegister } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 type FieldErrors = {
@@ -15,7 +14,7 @@ type FieldErrors = {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { showNotification } = useAuth();
+  const { signUp, showNotification } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -40,11 +39,16 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await apiRegister(email, password);
+      await signUp(email, password);
       showNotification({ status: "success", title: "Account created", message: "Check your email for the verification code." });
       router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed";
+      if (message.includes("already exists")) {
+        showNotification({ status: "success", title: "Account created", message: message });
+        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        return;
+      }
       showNotification({ status: "danger", title: "Sign up failed", message });
     } finally {
       setLoading(false);

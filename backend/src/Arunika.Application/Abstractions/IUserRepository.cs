@@ -8,4 +8,5 @@ public interface IUserRepository
     Task AddAsync(User user, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<User>> GetDigestSubscribersAsync(CancellationToken cancellationToken = default);
+    Task UpsertAsync(User user, CancellationToken cancellationToken = default);
 }
