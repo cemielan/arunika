@@ -1,5 +1,6 @@
 using Arunika.Api.Contracts;
 using Arunika.Application.Abstractions;
+using Arunika.Application.Services;
 using Arunika.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,16 +10,18 @@ namespace Arunika.Api.Controllers;
 /// <c>GET /v1/briefing</c> — daily morning brief (design doc §7). Returns the
 /// cached AI-generated briefing (executive summary, sentiment, risk level) when
 /// <c>GenerateDailyBriefingJob</c> has already run for the requested date;
-/// otherwise falls back to a live-computed market pulse. Top stories and market
-/// pulse are always computed from the same rolling <see cref="WindowDays"/>-day
-/// window.
+/// otherwise generates it on demand and falls back to the most recent briefing
+/// only when generation fails. Top stories and market pulse are always computed
+/// from the same rolling <see cref="WindowDays"/>-day window.
 /// </summary>
 [ApiController]
 [Route("v1/briefing")]
 [Produces("application/json")]
 public class BriefingController(
     IArticleRepository articleRepository,
-    IArticleAnalysisRepository articleAnalysisRepository) : ControllerBase
+    IArticleAnalysisRepository articleAnalysisRepository,
+    DailyBriefingService dailyBriefingService,
+    ILogger<BriefingController> logger) : ControllerBase
 {
     private const int TopStoryCount = 10;
     private const int WindowDays = 7;
@@ -44,8 +47,26 @@ public class BriefingController(
         // Try the cached briefing for the requested date first.
         var cached = await articleAnalysisRepository.GetBriefingByDateAsync(rangeEnd, cancellationToken);
 
-        // If no briefing exists for the requested date (e.g. today's job hasn't run
-        // yet or failed due to rate limits), fall back to the most recent briefing.
+        // If today's briefing hasn't been generated yet (e.g. the 06:00 job was
+        // skipped because the host was asleep, or it failed), generate it on
+        // demand so the executive summary refreshes every day. Only for "today"
+        // to avoid expensive AI calls for historical dates.
+        if (cached is null && rangeEnd == DateOnly.FromDateTime(DateTime.UtcNow))
+        {
+            try
+            {
+                cached = await dailyBriefingService.GenerateForDateAsync(rangeEnd, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // AI provider down / rate-limited: fall through to the most
+                // recent briefing rather than failing the whole request.
+                logger.LogWarning(ex, "On-demand briefing generation failed; serving the most recent briefing.");
+            }
+        }
+
+        // If no briefing exists for the requested date, fall back to the most
+        // recent briefing.
         if (cached is null)
         {
             cached = await articleAnalysisRepository.GetLatestBriefingAsync(cancellationToken);

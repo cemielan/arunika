@@ -1,4 +1,5 @@
 using Arunika.Application.Abstractions;
+using Arunika.Application.Services;
 using Arunika.Infrastructure.AI;
 using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
@@ -50,6 +51,8 @@ public static class DependencyInjection
             var logger = sp.GetRequiredService<ILogger<CompositeAiEnrichmentService>>();
             return new CompositeAiEnrichmentService([gemini, openRouter], logger);
         });
+
+        services.AddScoped<DailyBriefingService>();
 
         services.AddScoped<IBriefingGenerationService>(sp =>
         {
