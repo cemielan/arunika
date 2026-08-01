@@ -1,5 +1,6 @@
 using Arunika.Api.Controllers;
 using Arunika.Application.Abstractions;
+using Arunika.Application.Services;
 using Arunika.IntegrationTests.Fakes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -31,6 +32,8 @@ public sealed class ApiTestHost : IAsyncLifetime
             .AddApplicationPart(typeof(NewsController).Assembly);
         builder.Services.AddScoped<IArticleRepository, FakeArticleRepository>();
         builder.Services.AddScoped<IArticleAnalysisRepository, FakeArticleAnalysisRepository>();
+        builder.Services.AddScoped<IBriefingGenerationService, FakeBriefingGenerationService>();
+        builder.Services.AddScoped<DailyBriefingService>();
 
         _app = builder.Build();
         _app.MapControllers();
