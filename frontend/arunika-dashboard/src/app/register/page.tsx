@@ -39,13 +39,23 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await signUp(email, password);
-      showNotification({ status: "success", title: "Account created", message: "Check your email for the verification code." });
-      router.push(`/verify?email=${encodeURIComponent(email)}`);
+      const needsVerification = await signUp(email, password);
+      if (needsVerification) {
+        showNotification({ status: "success", title: "Account created", message: "Check your email for the confirmation link." });
+        router.push(`/verify?email=${encodeURIComponent(email)}`);
+      } else {
+        showNotification({ status: "success", title: "Account created", message: "Welcome to Arunika." });
+        router.push("/");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed";
+      if (message.includes("sign in instead")) {
+        showNotification({ status: "success", title: "Account already exists", message: "Please sign in with your existing account." });
+        router.push("/login");
+        return;
+      }
       if (message.includes("already exists")) {
-        showNotification({ status: "success", title: "Account created", message: message });
+        showNotification({ status: "success", title: "Account created", message });
         router.push(`/verify?email=${encodeURIComponent(email)}`);
         return;
       }

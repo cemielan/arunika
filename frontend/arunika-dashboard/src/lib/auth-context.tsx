@@ -23,7 +23,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<boolean>;
   verifyOtp: (email: string, token: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -109,15 +109,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await syncProfile();
   }, [syncProfile]);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await getSupabaseClient().auth.signUp({
+  const signUp = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const { data, error } = await getSupabaseClient().auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${siteUrl()}/verify`,
       },
     });
-    if (error) throw new Error(friendlyAuthError(error));
+    if (error) {
+      const user = data.user as User | null;
+      if (error.message.includes("already registered") && user?.email_confirmed_at) {
+        throw new Error("An account with this email already exists. Please sign in instead.");
+      }
+      throw new Error(friendlyAuthError(error));
+    }
+    return data.session === null;
   }, []);
 
   const verifyOtp = useCallback(async (email: string, token: string) => {

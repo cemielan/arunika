@@ -46,6 +46,16 @@ function VerifyForm() {
       router.push("/");
     };
 
+    if (!tokenHash && !type && !hasCode) {
+      getSupabaseClient().auth.getSession().then(({ data }) => {
+        if (cancelled || !data.session) return;
+        router.push("/");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (tokenHash && type) {
       (async () => {
         const { error } = await getSupabaseClient().auth.verifyOtp({ token_hash: tokenHash, type });
