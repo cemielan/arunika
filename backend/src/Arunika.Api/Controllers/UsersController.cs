@@ -63,7 +63,6 @@ public class UsersController(IUserRepository userRepository) : ControllerBase
         {
             Id = userId,
             Email = emailClaim,
-            PasswordHash = string.Empty,
             Role = "user",
             EmailVerified = true,
         }, cancellationToken);
