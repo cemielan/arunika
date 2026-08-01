@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { siteUrl } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     setEmailError(undefined);
 
     try {
-      await supabase.auth.resetPasswordForEmail(email.trim(), {
+      await getSupabaseClient().auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${siteUrl()}/reset-password`,
       });
       setSent(true);

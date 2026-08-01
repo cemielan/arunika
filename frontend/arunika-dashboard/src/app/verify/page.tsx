@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, ErrorMessage, InputOTP, Typography } from "@heroui/react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { upsertMe } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -35,7 +35,7 @@ function VerifyForm() {
 
     let cancelled = false;
     const finalize = async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await getSupabaseClient().auth.getSession();
       if (!data.session) return;
       try {
         await upsertMe(data.session.access_token);
@@ -48,7 +48,7 @@ function VerifyForm() {
 
     if (tokenHash && type) {
       (async () => {
-        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+        const { error } = await getSupabaseClient().auth.verifyOtp({ token_hash: tokenHash, type });
         if (cancelled) return;
         if (error) {
           setOtpError("The confirmation link is invalid or expired. Enter the code from the email instead.");
@@ -61,12 +61,12 @@ function VerifyForm() {
       };
     }
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
       if (cancelled || !session) return;
       sub.subscription.unsubscribe();
       finalize();
     });
-    supabase.auth.getSession().then(({ data }) => {
+    getSupabaseClient().auth.getSession().then(({ data }) => {
       if (cancelled || !data.session) return;
       sub.subscription.unsubscribe();
       finalize();
@@ -117,14 +117,15 @@ function VerifyForm() {
       <div className="text-center">
         <Typography.Heading level={1} className="text-2xl">Verify your email</Typography.Heading>
         <Typography.Paragraph color="muted" className="mt-1">
-          Enter the 6-digit code sent to {email}.
+          Click the confirmation link we sent to <strong>{email}</strong>. If it doesn&apos;t work, enter the 6-digit
+          code from the same email below.
         </Typography.Paragraph>
       </div>
 
       <Card variant="default" className="p-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Verification Code</Typography.Paragraph>
+            <Typography.Paragraph size="sm" weight="medium">Verification Code (optional)</Typography.Paragraph>
             <InputOTP
               maxLength={6}
               value={otp}

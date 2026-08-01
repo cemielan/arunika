@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 type VerifyOtpType = "email" | "sms" | "recovery" | "invite" | "magiclink" | "email_change" | "phone_change";
 
@@ -46,7 +46,7 @@ function ResetForm() {
     let cancelled = false;
 
     if (tokenHash && type) {
-      supabase.auth
+      getSupabaseClient().auth
         .verifyOtp({ token_hash: tokenHash, type })
         .then(({ error }) => {
           if (cancelled) return;
@@ -67,13 +67,13 @@ function ResetForm() {
       sub.subscription.unsubscribe();
       setMode("manual");
     }, 15000);
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
       if (cancelled || !session) return;
       window.clearTimeout(timeout);
       sub.subscription.unsubscribe();
       setMode("new-password");
     });
-    supabase.auth.getSession().then(({ data }) => {
+    getSupabaseClient().auth.getSession().then(({ data }) => {
       if (cancelled || !data.session) return;
       window.clearTimeout(timeout);
       sub.subscription.unsubscribe();
@@ -98,7 +98,7 @@ function ResetForm() {
     setCodeError(undefined);
 
     try {
-      const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code, type: "recovery" });
+      const { error } = await getSupabaseClient().auth.verifyOtp({ email: email.trim(), token: code, type: "recovery" });
       if (error) throw new Error(error.message);
       setMode("new-password");
     } catch (err) {
@@ -126,9 +126,9 @@ function ResetForm() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await getSupabaseClient().auth.updateUser({ password });
       if (error) throw new Error(error.message);
-      await supabase.auth.signOut();
+      await getSupabaseClient().auth.signOut();
       setReset(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to reset password";

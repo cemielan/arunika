@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Alert } from "@heroui/react";
-import { supabase } from "./supabase";
+import { getSupabaseClient } from "./supabase";
 import { getMe, siteUrl, upsertMe } from "./api";
 
 export type Notification = {
@@ -55,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [notification, setNotification] = useState<Notification | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    getSupabaseClient().auth.getSession().then(({ data }) => {
       setUser(toAppUser(data.session?.user ?? null));
       setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
       setUser(toAppUser(session?.user ?? null));
     });
     return () => sub.subscription.unsubscribe();
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [notification, dismissNotification]);
 
   const syncProfile = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await getSupabaseClient().auth.getSession();
     const token = data.session?.access_token;
     if (!token) return;
     try {
@@ -85,17 +85,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
     if (error) throw new Error(friendlyAuthError(error));
 
-    const { data } = await supabase.auth.getSession();
+    const { data } = await getSupabaseClient().auth.getSession();
     const token = data.session?.access_token;
     if (!token) return;
 
     try {
       const me = await getMe(token);
       if (me === null) {
-        await supabase.auth.signOut();
+        await getSupabaseClient().auth.signOut();
         setUser(null);
         throw new Error("This account is no longer active. Please contact support.");
       }
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [syncProfile]);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { error } = await getSupabaseClient().auth.signUp({
       email,
       password,
       options: {
@@ -121,18 +121,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const verifyOtp = useCallback(async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    const { error } = await getSupabaseClient().auth.verifyOtp({ email, token, type: "signup" });
     if (error) throw new Error(friendlyAuthError(error));
     await syncProfile();
   }, [syncProfile]);
 
   const resendOtp = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resend({ type: "signup", email });
+    const { error } = await getSupabaseClient().auth.resend({ type: "signup", email });
     if (error) throw new Error(friendlyAuthError(error));
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await getSupabaseClient().auth.signOut();
     setUser(null);
   }, []);
 
