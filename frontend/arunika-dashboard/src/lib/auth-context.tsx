@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Alert } from "@heroui/react";
 import { supabase } from "./supabase";
-import { upsertMe } from "./api";
+import { getMe, siteUrl, upsertMe } from "./api";
 
 export type Notification = {
   status: "danger" | "success";
@@ -87,6 +87,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(friendlyAuthError(error));
+
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+
+    try {
+      const me = await getMe(token);
+      if (me === null) {
+        await supabase.auth.signOut();
+        setUser(null);
+        throw new Error("This account is no longer active. Please contact support.");
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === "This account is no longer active. Please contact support.") {
+        throw err;
+      }
+      // Backend unreachable or failed to answer: fail open so a backend
+      // hiccup never locks legitimate users out.
+    }
     await syncProfile();
   }, [syncProfile]);
 
@@ -95,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/verify`,
+        emailRedirectTo: `${siteUrl()}/verify`,
       },
     });
     if (error) throw new Error(friendlyAuthError(error));

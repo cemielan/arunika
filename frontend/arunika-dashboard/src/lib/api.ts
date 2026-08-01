@@ -4,6 +4,15 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5
 
 export type ApiErrorEnvelope = { error: { code: string; message: string } };
 
+export type MeResponse = { id: string; email: string; role: string };
+
+export function siteUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
+}
+
 export type PageMeta = {
   page: number;
   pageSize: number;
@@ -264,7 +273,27 @@ export const getArticleDetail = unstable_cache(
   { revalidate: 60 },
 );
 
-export async function upsertMe(token: string): Promise<{ id: string; email: string; role: string }> {
+export async function getMe(token: string): Promise<MeResponse | null> {
+  const res = await fetch(`${API_BASE_URL}/v1/users/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 404) return null;
+
+  if (!res.ok) {
+    let message = "Failed to load profile";
+    try {
+      const body = await res.json() as ApiErrorEnvelope;
+      message = body.error?.message ?? message;
+    } catch { }
+    throw new ApiRequestError(message, res.status);
+  }
+
+  const body = await res.json() as { data: MeResponse };
+  return body.data;
+}
+
+export async function upsertMe(token: string): Promise<MeResponse> {
   const res = await fetch(`${API_BASE_URL}/v1/users/me`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
@@ -279,7 +308,7 @@ export async function upsertMe(token: string): Promise<{ id: string; email: stri
     throw new ApiRequestError(message, res.status);
   }
 
-  const body = await res.json() as { data: { id: string; email: string; role: string } };
+  const body = await res.json() as { data: MeResponse };
   return body.data;
 }
 

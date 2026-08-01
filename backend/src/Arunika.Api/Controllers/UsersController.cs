@@ -12,6 +12,31 @@ namespace Arunika.Api.Controllers;
 [Produces("application/json")]
 public class UsersController(IUserRepository userRepository) : ControllerBase
 {
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<MeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMe(CancellationToken cancellationToken)
+    {
+        var idClaim = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(idClaim) || !Guid.TryParse(idClaim, out var userId))
+        {
+            return BadRequest(new ApiErrorEnvelope(new ApiErrorDetail(
+                "INVALID_TOKEN", "Token is missing a valid user identity.")));
+        }
+
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return NotFound(new ApiErrorEnvelope(new ApiErrorDetail(
+                "USER_NOT_FOUND", "No profile exists for this account.")));
+        }
+
+        return Ok(new ApiResponse<MeResponse>(new MeResponse(user.Id, user.Email, user.Role)));
+    }
+
     [HttpPost("me")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<MeResponse>), StatusCodes.Status200OK)]

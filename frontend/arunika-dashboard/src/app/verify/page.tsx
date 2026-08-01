@@ -26,33 +26,56 @@ function VerifyForm() {
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    const tokenHash = searchParams.get("token_hash");
-    const type = searchParams.get("type") as "signup" | "invite" | "magiclink" | "recovery" | "email_change" | null;
-    if (!tokenHash || !type) return;
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.substring(1));
+    const tokenHash = query.get("token_hash") ?? hash.get("token_hash");
+    const type = (query.get("type") ?? hash.get("type")) as "signup" | "invite" | "magiclink" | "recovery" | "email_change" | null;
+    const hasCode = query.has("code") || hash.has("code");
+    if (!tokenHash && !type && !hasCode) return;
 
     let cancelled = false;
-    (async () => {
-      const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-      if (cancelled) return;
-      if (error) {
-        setOtpError("The confirmation link is invalid or expired. Enter the code from the email instead.");
-        return;
-      }
+    const finalize = async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        try {
-          await upsertMe(data.session.access_token);
-        } catch {
-          // Profile sync feeds the daily digest; failure here is non-critical.
-        }
+      if (!data.session) return;
+      try {
+        await upsertMe(data.session.access_token);
+      } catch {
+        // Profile sync feeds the daily digest; failure here is non-critical.
       }
       showNotification({ status: "success", title: "Email verified", message: "Your account is ready." });
       router.push("/");
-    })();
+    };
+
+    if (tokenHash && type) {
+      (async () => {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+        if (cancelled) return;
+        if (error) {
+          setOtpError("The confirmation link is invalid or expired. Enter the code from the email instead.");
+          return;
+        }
+        await finalize();
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled || !session) return;
+      sub.subscription.unsubscribe();
+      finalize();
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled || !data.session) return;
+      sub.subscription.unsubscribe();
+      finalize();
+    });
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
-  }, [router, searchParams, showNotification]);
+  }, [router, showNotification]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

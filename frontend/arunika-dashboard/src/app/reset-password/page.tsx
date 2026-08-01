@@ -31,29 +31,58 @@ function ResetForm() {
   const [reset, setReset] = useState(false);
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.substring(1));
-    const tokenHash = hash.get("token_hash");
-    const type = hash.get("type") as VerifyOtpType | null;
+    const tokenHash = query.get("token_hash") ?? hash.get("token_hash");
+    const type = (query.get("type") ?? hash.get("type")) as VerifyOtpType | null;
+    const hasCode = query.has("code") || hash.has("code");
+    const hasAccessToken = hash.has("access_token");
 
-    if (!tokenHash || !type) {
+    if (!tokenHash && !type && !hasCode && !hasAccessToken) {
       const id = window.setTimeout(() => setMode("manual"), 0);
       return () => window.clearTimeout(id);
     }
 
     let cancelled = false;
-    supabase.auth
-      .verifyOtp({ token_hash: tokenHash, type })
-      .then(({ error }) => {
-        if (cancelled) return;
-        if (error) {
-          setMode("manual");
-          setCodeError("The reset link is invalid or expired. Enter the code from the email instead.");
-        } else {
-          setMode("new-password");
-        }
-      });
+
+    if (tokenHash && type) {
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type })
+        .then(({ error }) => {
+          if (cancelled) return;
+          if (error) {
+            setMode("manual");
+            setCodeError("The reset link is invalid or expired. Enter the code from the email instead.");
+          } else {
+            setMode("new-password");
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const timeout = window.setTimeout(() => {
+      if (cancelled) return;
+      sub.subscription.unsubscribe();
+      setMode("manual");
+    }, 15000);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled || !session) return;
+      window.clearTimeout(timeout);
+      sub.subscription.unsubscribe();
+      setMode("new-password");
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled || !data.session) return;
+      window.clearTimeout(timeout);
+      sub.subscription.unsubscribe();
+      setMode("new-password");
+    });
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      sub.subscription.unsubscribe();
     };
   }, []);
 

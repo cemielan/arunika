@@ -6,6 +6,9 @@ namespace Arunika.Infrastructure.Persistence.Repositories;
 
 public class UserRepository(ArunikaDbContext dbContext) : IUserRepository
 {
+    public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         => dbContext.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
