@@ -24,7 +24,6 @@ type AuthContextValue = {
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<boolean>;
-  verifyOtp: (email: string, token: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   showNotification: (n: Notification) => void;
@@ -43,7 +42,7 @@ function friendlyAuthError(error: { message: string } | null): string {
   const message = error.message;
   if (message.includes("Invalid login credentials")) return "Invalid email or password.";
   if (message.includes("User already registered")) {
-    return "An account with this email already exists. Check your inbox for the verification code.";
+    return "An account with this email already exists. Check your inbox for the confirmation email.";
   }
   if (message.includes("Email not confirmed")) return "Please verify your email first.";
   return message;
@@ -127,12 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.session === null;
   }, []);
 
-  const verifyOtp = useCallback(async (email: string, token: string) => {
-    const { error } = await getSupabaseClient().auth.verifyOtp({ email, token, type: "signup" });
-    if (error) throw new Error(friendlyAuthError(error));
-    await syncProfile();
-  }, [syncProfile]);
-
   const resendOtp = useCallback(async (email: string) => {
     const { error } = await getSupabaseClient().auth.resend({ type: "signup", email });
     if (error) throw new Error(friendlyAuthError(error));
@@ -151,7 +144,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ready,
         signIn,
         signUp,
-        verifyOtp,
         resendOtp,
         signOut,
         showNotification: setNotification,
