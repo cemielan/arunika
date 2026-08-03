@@ -7,7 +7,7 @@ public class CleanupOldArticlesJob(
     IArticleRepository articleRepository,
     ILogger<CleanupOldArticlesJob> logger)
 {
-    private const int RetentionDays = 30;
+    private const int RetentionDays = 7;
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {

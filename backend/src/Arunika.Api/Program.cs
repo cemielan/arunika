@@ -151,10 +151,14 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        // Fetch news twice a day — 08:00 and 15:00 Jakarta time (UTC+7) — instead of
+        // every 30 minutes. RSS feeds return the same stories repeatedly, so frequent
+        // polling only re-dedupes against articles already saved.
         recurringJobManager.AddOrUpdate<FetchNewsJob>(
             "fetch-news",
             job => job.RunAsync(CancellationToken.None),
-            "*/30 * * * *");
+            "0 8,15 * * *",
+            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
         recurringJobManager.AddOrUpdate<GenerateDailyBriefingJob>(
             "generate-daily-briefing",
             job => job.RunAsync(CancellationToken.None),
@@ -180,6 +184,20 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Jakarta is UTC+7 (WIB). Works on both Windows ("SE Asia Standard Time") and
+// Linux ("Asia/Jakarta") hosts, so Hangfire crons stay pinned to Jakarta time.
+static TimeZoneInfo JakartaTimeZone()
+{
+    try
+    {
+        return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+    }
+    catch (TimeZoneNotFoundException)
+    {
+        return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+    }
+}
 
 // Exposed so Arunika.IntegrationTests can boot this app via WebApplicationFactory<Program>.
 public partial class Program;
