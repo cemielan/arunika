@@ -24,6 +24,18 @@ function VerifyForm() {
   const [linkError, setLinkError] = useState<string | undefined>();
   const [resending, setResending] = useState(false);
 
+  const friendlyResendError = (message: string): string => {
+    if (message.toLowerCase().includes("rate limit")) {
+      return "Too many resend attempts. Please wait a minute and try again.";
+    }
+
+    if (message.toLowerCase().includes("smtp") || message.toLowerCase().includes("email provider")) {
+      return "Email delivery is not configured correctly in Supabase SMTP settings.";
+    }
+
+    return message;
+  };
+
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.substring(1));
@@ -96,7 +108,7 @@ function VerifyForm() {
       showNotification({ status: "success", title: "Email sent", message: "A new confirmation email is on its way. Check your inbox and spam folder." });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to resend";
-      showNotification({ status: "danger", title: "Error", message });
+      showNotification({ status: "danger", title: "Error", message: friendlyResendError(message) });
     } finally {
       setResending(false);
     }
@@ -116,8 +128,8 @@ function VerifyForm() {
         <Typography.Paragraph size="sm" color="muted">
           No email? Check your spam folder, then resend it below.
         </Typography.Paragraph>
-        <div className="mt-4 flex flex-col gap-3">
-          <Button variant="primary" onPress={handleResend} isDisabled={resending}>
+        <div className="mt-4 flex w-full flex-col items-center gap-3">
+          <Button variant="primary" onPress={handleResend} isDisabled={resending} className="w-full max-w-xs">
             {resending ? "Sending..." : "Resend confirmation email"}
           </Button>
           <Link href="/login" className="text-sm font-medium text-accent hover:underline">
