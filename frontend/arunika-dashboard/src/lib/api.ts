@@ -8,7 +8,26 @@ export type MeResponse = { id: string; email: string; role: string };
 
 export function siteUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  if (fromEnv) {
+    const normalized = fromEnv.replace(/\/+$/, "");
+
+    if (typeof window !== "undefined") {
+      try {
+        const envUrl = new URL(normalized);
+        const currentUrl = new URL(window.location.origin);
+        const envIsLocalhost = envUrl.hostname === "localhost" || envUrl.hostname === "127.0.0.1";
+        const currentIsLocalhost = currentUrl.hostname === "localhost" || currentUrl.hostname === "127.0.0.1";
+
+        if (envIsLocalhost && !currentIsLocalhost) {
+          return currentUrl.origin;
+        }
+      } catch {
+        // Ignore malformed NEXT_PUBLIC_SITE_URL and fall through to runtime origin.
+      }
+    }
+
+    return normalized;
+  }
   if (typeof window !== "undefined") return window.location.origin;
   return "";
 }

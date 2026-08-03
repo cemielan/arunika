@@ -38,11 +38,10 @@ public class BriefingController(
     [ProducesResponseType(typeof(ApiResponse<BriefingResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBriefing([FromQuery] DateOnly? date, CancellationToken cancellationToken)
     {
-        var rangeEnd = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var todayJakarta = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, JakartaTimeZone()).DateTime);
+        var rangeEnd = date ?? todayJakarta;
         var rangeStart = rangeEnd.AddDays(-(WindowDays - 1));
-
-        var from = new DateTimeOffset(rangeStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
-        var to = new DateTimeOffset(rangeEnd.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(1);
+        var (from, to) = ToUtcRange(rangeStart, rangeEnd);
 
         // Try the cached briefing for the requested date first.
         var cached = await articleAnalysisRepository.GetBriefingByDateAsync(rangeEnd, cancellationToken);
@@ -51,7 +50,7 @@ public class BriefingController(
         // skipped because the host was asleep, or it failed), generate it on
         // demand so the executive summary refreshes every day. Only for "today"
         // to avoid expensive AI calls for historical dates.
-        if (cached is null && rangeEnd == DateOnly.FromDateTime(DateTime.UtcNow))
+        if (cached is null && rangeEnd == todayJakarta)
         {
             try
             {
@@ -94,6 +93,29 @@ public class BriefingController(
         var meta = new { generatedAt = DateTimeOffset.UtcNow };
 
         return Ok(new ApiResponse<BriefingResponseDto>(data, meta));
+    }
+
+    private static (DateTimeOffset From, DateTimeOffset To) ToUtcRange(DateOnly rangeStart, DateOnly rangeEnd)
+    {
+        var jakarta = JakartaTimeZone();
+        var startLocal = DateTime.SpecifyKind(rangeStart.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+        var endExclusiveLocal = DateTime.SpecifyKind(rangeEnd.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+
+        var from = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(startLocal, jakarta), TimeSpan.Zero);
+        var to = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(endExclusiveLocal, jakarta), TimeSpan.Zero);
+        return (from, to);
+    }
+
+    private static TimeZoneInfo JakartaTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        }
     }
 
     private static MarketPulseDto BuildMarketPulse(IReadOnlyList<Arunika.Domain.Entities.Article> articles)

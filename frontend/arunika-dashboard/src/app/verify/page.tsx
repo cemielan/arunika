@@ -20,7 +20,7 @@ function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
-  const { resendOtp, showNotification } = useAuth();
+  const { resendConfirmationEmail, showNotification } = useAuth();
   const [linkError, setLinkError] = useState<string | undefined>();
   const [resending, setResending] = useState(false);
 
@@ -92,7 +92,7 @@ function VerifyForm() {
     }
     setResending(true);
     try {
-      await resendOtp(email);
+      await resendConfirmationEmail(email);
       showNotification({ status: "success", title: "Email sent", message: "A new confirmation email is on its way. Check your inbox and spam folder." });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to resend";

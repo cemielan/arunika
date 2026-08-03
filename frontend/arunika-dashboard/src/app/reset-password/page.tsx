@@ -1,12 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { getSupabaseClient } from "@/lib/supabase";
-
-type VerifyOtpType = "email" | "sms" | "recovery" | "invite" | "magiclink" | "email_change" | "phone_change";
 
 export default function ResetPasswordPage() {
   return (
@@ -17,13 +14,7 @@ export default function ResetPasswordPage() {
 }
 
 function ResetForm() {
-  const searchParams = useSearchParams();
-  const emailParam = searchParams.get("email") ?? "";
-
-  const [mode, setMode] = useState<"verifying" | "manual" | "new-password">("verifying");
-  const [email, setEmail] = useState(emailParam);
-  const [code, setCode] = useState("");
-  const [codeError, setCodeError] = useState<string | undefined>();
+  const [mode, setMode] = useState<"verifying" | "new-password" | "expired">("verifying");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ password?: string; confirmPassword?: string }>({});
@@ -34,12 +25,11 @@ function ResetForm() {
     const query = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.substring(1));
     const tokenHash = query.get("token_hash") ?? hash.get("token_hash");
-    const type = (query.get("type") ?? hash.get("type")) as VerifyOtpType | null;
-    const hasCode = query.has("code") || hash.has("code");
+    const type = (query.get("type") ?? hash.get("type")) as "recovery" | null;
     const hasAccessToken = hash.has("access_token");
 
-    if (!tokenHash && !type && !hasCode && !hasAccessToken) {
-      const id = window.setTimeout(() => setMode("manual"), 0);
+    if (!tokenHash && !type && !hasAccessToken) {
+      const id = window.setTimeout(() => setMode("expired"), 0);
       return () => window.clearTimeout(id);
     }
 
@@ -51,8 +41,7 @@ function ResetForm() {
         .then(({ error }) => {
           if (cancelled) return;
           if (error) {
-            setMode("manual");
-            setCodeError("The reset link is invalid or expired. Enter the code from the email instead.");
+            setMode("expired");
           } else {
             setMode("new-password");
           }
@@ -65,7 +54,7 @@ function ResetForm() {
     const timeout = window.setTimeout(() => {
       if (cancelled) return;
       sub.subscription.unsubscribe();
-      setMode("manual");
+      setMode("expired");
     }, 15000);
     const { data: sub } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
       if (cancelled || !session) return;
@@ -85,29 +74,6 @@ function ResetForm() {
       sub.subscription.unsubscribe();
     };
   }, []);
-
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!email.trim() || !code.trim()) {
-      setCodeError("Enter your email and the 6-digit code.");
-      return;
-    }
-
-    setLoading(true);
-    setCodeError(undefined);
-
-    try {
-      const { error } = await getSupabaseClient().auth.verifyOtp({ email: email.trim(), token: code, type: "recovery" });
-      if (error) throw new Error(error.message);
-      setMode("new-password");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Verification failed";
-      setCodeError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const validate = (): boolean => {
     const errors: { password?: string; confirmPassword?: string } = {};
@@ -156,78 +122,64 @@ function ResetForm() {
     );
   }
 
+  if (mode === "expired") {
+    return (
+      <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
+        <div className="text-center">
+          <Typography.Heading level={1} className="text-2xl">Reset link expired</Typography.Heading>
+          <Typography.Paragraph color="muted" className="mt-1">
+            This password reset link is invalid or expired. Request a new one.
+          </Typography.Paragraph>
+        </div>
+        <Card variant="default" className="p-6 text-center">
+          <Link href="/forgot-password" className="font-medium text-accent hover:underline">
+            Send a new reset link
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
       <div className="text-center">
         <Typography.Heading level={1} className="text-2xl">Reset your password</Typography.Heading>
         <Typography.Paragraph color="muted" className="mt-1">
-          {mode === "new-password" ? "Choose a new password for your account." : "Enter the 6-digit code from the reset email."}
+          Choose a new password for your account.
         </Typography.Paragraph>
       </div>
 
-      {mode === "manual" ? (
-        <Card variant="default" className="p-6">
-          <form onSubmit={handleVerifyCode} className="flex flex-col gap-4" noValidate>
-            <div className="flex flex-col gap-1">
-              <Typography.Paragraph size="sm" weight="medium">Email</Typography.Paragraph>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setCodeError(undefined); }}
-                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${codeError ? "border-danger" : "border-border"}`}
-                placeholder="you@example.com"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Typography.Paragraph size="sm" weight="medium">Verification Code</Typography.Paragraph>
-              <input
-                value={code}
-                onChange={(e) => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setCodeError(undefined); }}
-                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${codeError ? "border-danger" : "border-border"}`}
-                placeholder="6-digit code"
-                inputMode="numeric"
-                maxLength={6}
-              />
-              {codeError && <ErrorMessage>{codeError}</ErrorMessage>}
-            </div>
-            <Button type="submit" variant="primary" isDisabled={loading}>
-              {loading ? "Verifying..." : "Continue"}
-            </Button>
-          </form>
-        </Card>
-      ) : (
-        <Card variant="default" className="p-6">
-          <form onSubmit={handleReset} className="flex flex-col gap-4" noValidate>
-            <div className="flex flex-col gap-1">
-              <Typography.Paragraph size="sm" weight="medium">New Password</Typography.Paragraph>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
-                placeholder="Min. 8 characters"
-              />
-              {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
-            </div>
+      <Card variant="default" className="p-6">
+        <form onSubmit={handleReset} className="flex flex-col gap-4" noValidate>
+          <div className="flex flex-col gap-1">
+            <Typography.Paragraph size="sm" weight="medium">New Password</Typography.Paragraph>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
+              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
+              placeholder="Min. 8 characters"
+            />
+            {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
+          </div>
 
-            <div className="flex flex-col gap-1">
-              <Typography.Paragraph size="sm" weight="medium">Confirm Password</Typography.Paragraph>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
-                className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
-                placeholder="Repeat your password"
-              />
-              {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
-            </div>
+          <div className="flex flex-col gap-1">
+            <Typography.Paragraph size="sm" weight="medium">Confirm Password</Typography.Paragraph>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
+              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
+              placeholder="Repeat your password"
+            />
+            {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
+          </div>
 
-            <Button type="submit" variant="primary" isDisabled={loading}>
-              {loading ? "Resetting..." : "Reset password"}
-            </Button>
-          </form>
-        </Card>
-      )}
+          <Button type="submit" variant="primary" isDisabled={loading || mode === "verifying"}>
+            {loading ? "Resetting..." : mode === "verifying" ? "Verifying link..." : "Reset password"}
+          </Button>
+        </form>
+      </Card>
 
       <Typography.Paragraph size="sm" color="muted" className="text-center">
         <Link href="/login" className="font-medium text-accent hover:underline">

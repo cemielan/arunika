@@ -16,6 +16,7 @@ public class DailyBriefingService(
     IBriefingGenerationService briefingGenerationService)
 {
     private const int TopStoryCount = 10;
+    private const int WindowDays = 7;
 
     /// <summary>
     /// Generates and saves the briefing for <paramref name="date"/>. Returns the
@@ -23,7 +24,13 @@ public class DailyBriefingService(
     /// </summary>
     public async Task<Briefing?> GenerateForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var topStories = await articleRepository.GetTopByImpactScoreAsync(date, TopStoryCount, cancellationToken);
+        var rangeStart = date.AddDays(-(WindowDays - 1));
+        var (from, to) = ToUtcRange(rangeStart, date);
+
+        var topStories = (await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken))
+            .OrderByDescending(article => article.Analysis!.ImpactScore)
+            .Take(TopStoryCount)
+            .ToList();
 
         if (topStories.Count == 0)
         {
@@ -54,5 +61,28 @@ public class DailyBriefingService(
 
         await articleAnalysisRepository.SaveBriefingAsync(briefing, cancellationToken);
         return briefing;
+    }
+
+    private static (DateTimeOffset From, DateTimeOffset To) ToUtcRange(DateOnly rangeStart, DateOnly rangeEnd)
+    {
+        var jakarta = JakartaTimeZone();
+        var startLocal = DateTime.SpecifyKind(rangeStart.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+        var endExclusiveLocal = DateTime.SpecifyKind(rangeEnd.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+
+        var from = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(startLocal, jakarta), TimeSpan.Zero);
+        var to = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(endExclusiveLocal, jakarta), TimeSpan.Zero);
+        return (from, to);
+    }
+
+    private static TimeZoneInfo JakartaTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        }
     }
 }

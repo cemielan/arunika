@@ -24,7 +24,7 @@ type AuthContextValue = {
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<boolean>;
-  resendOtp: (email: string) => Promise<void>;
+  resendConfirmationEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   showNotification: (n: Notification) => void;
   dismissNotification: () => void;
@@ -126,8 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.session === null;
   }, []);
 
-  const resendOtp = useCallback(async (email: string) => {
-    const { error } = await getSupabaseClient().auth.resend({ type: "signup", email });
+  const resendConfirmationEmail = useCallback(async (email: string) => {
+    const { error } = await getSupabaseClient().auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${siteUrl()}/verify`,
+      },
+    });
     if (error) throw new Error(friendlyAuthError(error));
   }, []);
 
@@ -144,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ready,
         signIn,
         signUp,
-        resendOtp,
+        resendConfirmationEmail,
         signOut,
         showNotification: setNotification,
         dismissNotification,

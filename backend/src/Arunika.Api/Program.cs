@@ -138,7 +138,19 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
+app.MapGet("/health", (HttpContext context, ILogger<Program> logger) =>
+    {
+        logger.LogInformation(
+            "HealthCheck hit from {RemoteIp} with User-Agent '{UserAgent}'.",
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            context.Request.Headers.UserAgent.ToString());
+
+        return Results.Ok(new
+        {
+            status = "Healthy",
+            checkedAtUtc = DateTimeOffset.UtcNow
+        });
+    })
     .WithName("HealthCheck");
 
 // Register recurring Hangfire jobs. On Supabase free tier (or any cold-start
@@ -162,11 +174,13 @@ using (var scope = app.Services.CreateScope())
         recurringJobManager.AddOrUpdate<GenerateDailyBriefingJob>(
             "generate-daily-briefing",
             job => job.RunAsync(CancellationToken.None),
-            "0 6 * * *");
+            "10 8 * * *",
+            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
         recurringJobManager.AddOrUpdate<CleanupOldArticlesJob>(
             "cleanup-old-articles",
             job => job.RunAsync(CancellationToken.None),
-            "0 0 * * *");
+            "20 0 * * *",
+            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
         recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
             "retry-failed-enrichment",
             job => job.RunAsync(CancellationToken.None),
@@ -174,7 +188,8 @@ using (var scope = app.Services.CreateScope())
         recurringJobManager.AddOrUpdate<SendEmailDigestJob>(
             "send-email-digest",
             job => job.RunAsync(CancellationToken.None),
-            "0 8 * * *");
+            "30 8 * * *",
+            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
     }
     catch (Exception ex)
     {

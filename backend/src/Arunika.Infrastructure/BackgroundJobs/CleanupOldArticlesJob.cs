@@ -14,11 +14,8 @@ public class CleanupOldArticlesJob(
         var cutoff = DateTimeOffset.UtcNow.AddDays(-RetentionDays);
         var deleted = await articleRepository.DeleteOlderThanAsync(cutoff, cancellationToken);
 
-        if (deleted > 0)
-        {
-            logger.LogInformation(
-                "CleanupOldArticlesJob: deleted {Count} article(s) published before {Cutoff}.",
-                deleted, cutoff);
-        }
+        logger.LogInformation(
+            "CleanupOldArticlesJob: deleted {Count} article(s) published before {Cutoff}.",
+            deleted, cutoff);
     }
 }

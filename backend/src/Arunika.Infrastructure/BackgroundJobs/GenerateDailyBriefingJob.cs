@@ -9,7 +9,7 @@ public class GenerateDailyBriefingJob(
 {
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, JakartaTimeZone()).DateTime);
 
         var briefing = await dailyBriefingService.GenerateForDateAsync(today, cancellationToken);
 
@@ -22,5 +22,17 @@ public class GenerateDailyBriefingJob(
         logger.LogInformation(
             "GenerateDailyBriefingJob: saved briefing for {Date} (sentiment {Sentiment}, risk {RiskLevel}).",
             today, briefing.OverallSentiment, briefing.RiskLevel);
+    }
+
+    private static TimeZoneInfo JakartaTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        }
     }
 }
