@@ -86,6 +86,16 @@ public class GeminiAiEnrichmentService(
                 catch (Exception ex)
                 {
                     lastException = ex;
+                    var isRetryable = IsRetryable(ex);
+
+                    if (!isRetryable)
+                    {
+                        logger.LogWarning(ex,
+                            "Gemini enrichment failed with a non-retryable error for model {Model} and article {ArticleId}; trying next fallback.",
+                            model, article.Id);
+                        break;
+                    }
+
                     if (attempt < MaxAttempts)
                     {
                         var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
@@ -106,6 +116,21 @@ public class GeminiAiEnrichmentService(
 
         throw new InvalidOperationException(
             $"Gemini enrichment failed for article {article.Id} after exhausting all models.", lastException);
+    }
+
+    private static bool IsRetryable(Exception ex)
+    {
+        var message = ex.ToString();
+
+        if (message.Contains("Quota exceeded for metric", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("You exceeded your current quota", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("is not found for API version", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("is not supported for generateContent", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static string BuildPrompt(Article article)
