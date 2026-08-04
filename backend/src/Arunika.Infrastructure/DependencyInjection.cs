@@ -100,7 +100,10 @@ public static class DependencyInjection
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UsePostgreSqlStorage(pg => pg.UseNpgsqlConnection(connectionString)));
-        services.AddHangfireServer();
+        services.AddHangfireServer(options =>
+        {
+            options.Queues = ["fetch", "default", "enrichment"];
+        });
 
         return services;
     }

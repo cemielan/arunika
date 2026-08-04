@@ -12,6 +12,7 @@ namespace Arunika.Infrastructure.BackgroundJobs;
 /// stop the others (design doc §3/Phase 3: "a failed source shouldn't take down
 /// the whole job").
 /// </summary>
+[Queue("fetch")]
 public class FetchNewsJob(
     IEnumerable<INewsFetcher> fetchers,
     IArticleRepository articleRepository,

@@ -13,6 +13,7 @@ namespace Arunika.Infrastructure.BackgroundJobs;
 /// "Failed" forever. Safe to run repeatedly: articles that succeed flip to
 /// <c>Completed</c> and drop out of the next sweep automatically.
 /// </summary>
+[Queue("enrichment")]
 public class RetryFailedEnrichmentJob(
     IArticleAnalysisRepository articleAnalysisRepository,
     ILogger<RetryFailedEnrichmentJob> logger)

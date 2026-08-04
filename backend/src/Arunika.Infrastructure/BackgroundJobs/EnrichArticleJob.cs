@@ -1,5 +1,6 @@
 using Arunika.Application.Abstractions;
 using Microsoft.Extensions.Logging;
+using Hangfire;
 
 namespace Arunika.Infrastructure.BackgroundJobs;
 
@@ -8,6 +9,7 @@ namespace Arunika.Infrastructure.BackgroundJobs;
 /// Enqueued fire-and-forget by <see cref="FetchNewsJob"/> right after a
 /// non-duplicate article is saved.
 /// </summary>
+[Queue("enrichment")]
 public class EnrichArticleJob(
     IAiEnrichmentService aiEnrichmentService,
     IArticleAnalysisRepository articleAnalysisRepository,
