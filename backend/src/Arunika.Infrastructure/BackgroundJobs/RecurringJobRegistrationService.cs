@@ -6,6 +6,7 @@ namespace Arunika.Infrastructure.BackgroundJobs;
 
 public sealed class RecurringJobRegistrationService(
     IRecurringJobManager recurringJobManager,
+    IBackgroundJobClient backgroundJobClient,
     ILogger<RecurringJobRegistrationService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -14,15 +15,17 @@ public sealed class RecurringJobRegistrationService(
         {
             try
             {
+                // Fetch more frequently so feeds keep moving even if the app
+                // was asleep/restarted around a previous run window.
                 recurringJobManager.AddOrUpdate<FetchNewsJob>(
                     "fetch-news",
                     job => job.RunAsync(CancellationToken.None),
-                    "0 8,15 * * *",
+                    "*/30 * * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
                 recurringJobManager.AddOrUpdate<GenerateDailyBriefingJob>(
                     "generate-daily-briefing",
                     job => job.RunAsync(CancellationToken.None),
-                    "10 8 * * *",
+                    "15 8 * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
                 recurringJobManager.AddOrUpdate<CleanupOldArticlesJob>(
                     "cleanup-old-articles",
@@ -38,6 +41,10 @@ public sealed class RecurringJobRegistrationService(
                     job => job.RunAsync(CancellationToken.None),
                     "30 8 * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
+
+                // Catch up immediately on startup so a just-woken instance does
+                // not wait up to 30 minutes before ingesting fresh feed items.
+                backgroundJobClient.Enqueue<FetchNewsJob>(job => job.RunAsync(CancellationToken.None));
 
                 logger.LogInformation("Hangfire recurring jobs registered successfully.");
                 return;
