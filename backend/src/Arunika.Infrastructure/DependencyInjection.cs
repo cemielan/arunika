@@ -86,6 +86,7 @@ public static class DependencyInjection
         services.AddScoped<CleanupOldArticlesJob>();
         services.AddScoped<GenerateDailyBriefingJob>();
         services.AddScoped<SendEmailDigestJob>();
+        services.AddHostedService<RecurringJobRegistrationService>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.AddHttpClient<BrevoEmailService>(client =>

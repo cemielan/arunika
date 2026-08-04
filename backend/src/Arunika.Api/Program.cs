@@ -153,66 +153,7 @@ app.MapGet("/health", (HttpContext context, ILogger<Program> logger) =>
     })
     .WithName("HealthCheck");
 
-// Register recurring Hangfire jobs. On Supabase free tier (or any cold-start
-// DB), the first connection may be slow; wrap in try-catch so the app still
-// starts even if lock acquisition times out. The Hangfire server will retry
-// automatically on its own polling schedule, and the jobs become registered
-// on a subsequent successful connection.
-using (var scope = app.Services.CreateScope())
-{
-    try
-    {
-        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-        // Fetch news twice a day — 08:00 and 15:00 Jakarta time (UTC+7) — instead of
-        // every 30 minutes. RSS feeds return the same stories repeatedly, so frequent
-        // polling only re-dedupes against articles already saved.
-        recurringJobManager.AddOrUpdate<FetchNewsJob>(
-            "fetch-news",
-            job => job.RunAsync(CancellationToken.None),
-            "0 8,15 * * *",
-            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
-        recurringJobManager.AddOrUpdate<GenerateDailyBriefingJob>(
-            "generate-daily-briefing",
-            job => job.RunAsync(CancellationToken.None),
-            "10 8 * * *",
-            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
-        recurringJobManager.AddOrUpdate<CleanupOldArticlesJob>(
-            "cleanup-old-articles",
-            job => job.RunAsync(CancellationToken.None),
-            "20 0 * * *",
-            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
-        recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
-            "retry-failed-enrichment",
-            job => job.RunAsync(CancellationToken.None),
-            "*/10 * * * *");
-        recurringJobManager.AddOrUpdate<SendEmailDigestJob>(
-            "send-email-digest",
-            job => job.RunAsync(CancellationToken.None),
-            "30 8 * * *",
-            new RecurringJobOptions { TimeZone = JakartaTimeZone() });
-    }
-    catch (Exception ex)
-    {
-        Log.Warning(ex, "Failed to register Hangfire recurring jobs on startup. " +
-            "The jobs will be registered once the database is reachable.");
-    }
-}
-
 app.Run();
-
-// Jakarta is UTC+7 (WIB). Works on both Windows ("SE Asia Standard Time") and
-// Linux ("Asia/Jakarta") hosts, so Hangfire crons stay pinned to Jakarta time.
-static TimeZoneInfo JakartaTimeZone()
-{
-    try
-    {
-        return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
-    }
-    catch (TimeZoneNotFoundException)
-    {
-        return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-    }
-}
 
 // Exposed so Arunika.IntegrationTests can boot this app via WebApplicationFactory<Program>.
 public partial class Program;
