@@ -54,7 +54,18 @@ public class BriefingController(
         {
             try
             {
-                cached = await dailyBriefingService.GenerateForDateAsync(rangeEnd, cancellationToken);
+                // The AI providers retry multiple models with backoff (and may
+                // wait for a free-tier rate-limit slot), which can take minutes.
+                // The briefing page must not hang on that — cap on-demand
+                // generation at a short budget and serve the most recent
+                // briefing instead, so the endpoint always responds promptly.
+                using var generationCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                generationCts.CancelAfter(TimeSpan.FromSeconds(20));
+                cached = await dailyBriefingService.GenerateForDateAsync(rangeEnd, generationCts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning("On-demand briefing generation exceeded its time budget; serving the most recent briefing.");
             }
             catch (Exception ex)
             {
