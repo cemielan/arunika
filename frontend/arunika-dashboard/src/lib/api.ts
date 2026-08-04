@@ -147,10 +147,12 @@ export class ApiRequestError extends Error {
 async function apiGet<T>(
   path: string,
   revalidateSeconds: number,
+  noStore: boolean = false,
 ): Promise<{ data: T; meta: unknown } | { notFound: true }> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    next: { revalidate: revalidateSeconds },
-  });
+  const res = await fetch(
+    `${API_BASE_URL}${path}`,
+    noStore ? { cache: "no-store" } : { next: { revalidate: revalidateSeconds } },
+  );
 
   if (res.status === 404) {
     return { notFound: true };
@@ -249,36 +251,32 @@ export const getBriefing = unstable_cache(
 
 export type NewsSortBy = "date" | "impact";
 
-export const getNewsFeed = unstable_cache(
-  async (params: {
-    category?: string;
-    /** Full-text search query against article title and content. */
-    search?: string;
-    /** Published-date range filter, inclusive, formatted "yyyy-MM-dd". */
-    from?: string;
-    to?: string;
-    sortBy?: NewsSortBy;
-    page?: number;
-    pageSize?: number;
-  }): Promise<{ items: NewsListItem[]; meta: PageMeta }> => {
-    const search = new URLSearchParams();
-    if (params.category) search.set("category", params.category);
-    if (params.search) search.set("search", params.search);
-    if (params.from) search.set("from", params.from);
-    if (params.to) search.set("to", params.to);
-    if (params.sortBy) search.set("sortBy", params.sortBy);
-    search.set("page", String(params.page ?? 1));
-    search.set("pageSize", String(params.pageSize ?? 20));
+export async function getNewsFeed(params: {
+  category?: string;
+  /** Full-text search query against article title and content. */
+  search?: string;
+  /** Published-date range filter, inclusive, formatted "yyyy-MM-dd". */
+  from?: string;
+  to?: string;
+  sortBy?: NewsSortBy;
+  page?: number;
+  pageSize?: number;
+}): Promise<{ items: NewsListItem[]; meta: PageMeta }> {
+  const search = new URLSearchParams();
+  if (params.category) search.set("category", params.category);
+  if (params.search) search.set("search", params.search);
+  if (params.from) search.set("from", params.from);
+  if (params.to) search.set("to", params.to);
+  if (params.sortBy) search.set("sortBy", params.sortBy);
+  search.set("page", String(params.page ?? 1));
+  search.set("pageSize", String(params.pageSize ?? 20));
 
-    const result = await apiGet<NewsListItem[]>(`/v1/news?${search.toString()}`, 60);
-    if ("notFound" in result) {
-      return { items: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } };
-    }
-    return { items: result.data, meta: result.meta as PageMeta };
-  },
-  ["news-feed"],
-  { revalidate: 60 },
-);
+  const result = await apiGet<NewsListItem[]>(`/v1/news?${search.toString()}`, 0, true);
+  if ("notFound" in result) {
+    return { items: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } };
+  }
+  return { items: result.data, meta: result.meta as PageMeta };
+}
 
 export const getArticleDetail = unstable_cache(
   async (id: string): Promise<ArticleDetail | null> => {
