@@ -19,35 +19,64 @@ public class FetchNewsJob(
     INewsSourceRepository newsSourceRepository,
     ILogger<FetchNewsJob> logger)
 {
+    public sealed record SourceFetchResult(
+        string Source,
+        int FetchedCount,
+        int SavedCount,
+        int SkippedExistingCount,
+        int EnqueuedEnrichmentCount,
+        string? Error = null);
+
+    public sealed record FetchNewsRunResult(
+        int TotalFetched,
+        int TotalSaved,
+        int TotalSkippedExisting,
+        int TotalEnqueuedEnrichment,
+        IReadOnlyList<SourceFetchResult> Sources);
+
     public async Task RunAsync(CancellationToken cancellationToken = default)
+        => _ = await RunWithReportAsync(cancellationToken);
+
+    public async Task<FetchNewsRunResult> RunWithReportAsync(CancellationToken cancellationToken = default)
     {
+        var sourceResults = new List<SourceFetchResult>();
+
         foreach (var fetcher in fetchers)
         {
             try
             {
-                await RunForSourceAsync(fetcher, cancellationToken);
+                var result = await RunForSourceAsync(fetcher, cancellationToken);
+                sourceResults.Add(result);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "FetchNewsJob failed for source {Source}; continuing with remaining sources.",
                     fetcher.SourceName);
+                sourceResults.Add(new SourceFetchResult(fetcher.SourceName, 0, 0, 0, 0, ex.Message));
             }
         }
+
+        return new FetchNewsRunResult(
+            sourceResults.Sum(x => x.FetchedCount),
+            sourceResults.Sum(x => x.SavedCount),
+            sourceResults.Sum(x => x.SkippedExistingCount),
+            sourceResults.Sum(x => x.EnqueuedEnrichmentCount),
+            sourceResults);
     }
 
-    private async Task RunForSourceAsync(INewsFetcher fetcher, CancellationToken cancellationToken)
+    private async Task<SourceFetchResult> RunForSourceAsync(INewsFetcher fetcher, CancellationToken cancellationToken)
     {
         var sourceId = await newsSourceRepository.GetIdByNameAsync(fetcher.SourceName, cancellationToken);
         if (sourceId is null)
         {
-            logger.LogError(
-                "No news_sources row named '{Source}' — skipping. Seed it via an EF Core configuration/migration first.",
-                fetcher.SourceName);
-            return;
+            var error = $"No news_sources row named '{fetcher.SourceName}' — skipping.";
+            logger.LogError(error);
+            return new SourceFetchResult(fetcher.SourceName, 0, 0, 0, 0, error);
         }
 
         var fetched = await fetcher.FetchAsync(cancellationToken);
         var savedCount = 0;
+        var skippedExistingCount = 0;
         var newArticleIds = new List<Guid>();
 
         foreach (var item in fetched)
@@ -55,6 +84,7 @@ public class FetchNewsJob(
             var existing = await articleRepository.GetByUrlAsync(item.Url, cancellationToken);
             if (existing is not null)
             {
+                skippedExistingCount++;
                 continue;
             }
 
@@ -105,5 +135,12 @@ public class FetchNewsJob(
         {
             BackgroundJob.Enqueue<EnrichArticleJob>(job => job.RunAsync(articleId, CancellationToken.None));
         }
+
+        return new SourceFetchResult(
+            fetcher.SourceName,
+            fetched.Count,
+            savedCount,
+            skippedExistingCount,
+            newArticleIds.Count);
     }
 }
