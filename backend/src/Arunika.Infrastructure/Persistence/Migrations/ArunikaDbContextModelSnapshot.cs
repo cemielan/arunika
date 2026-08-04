@@ -349,6 +349,51 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                             Name = "CNBC",
                             SourceType = "Rss",
                             TrustScore = 75
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-0000-0000-0000-000000000003"),
+                            BaseUrl = "https://www.marketwatch.com",
+                            IsActive = true,
+                            Name = "MarketWatch",
+                            SourceType = "Rss",
+                            TrustScore = 75
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-0000-0000-0000-000000000004"),
+                            BaseUrl = "https://finance.yahoo.com",
+                            IsActive = true,
+                            Name = "Yahoo Finance",
+                            SourceType = "Rss",
+                            TrustScore = 70
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-0000-0000-0000-000000000005"),
+                            BaseUrl = "https://www.reuters.com",
+                            IsActive = true,
+                            Name = "Reuters Business News",
+                            SourceType = "Rss",
+                            TrustScore = 82
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-0000-0000-0000-000000000006"),
+                            BaseUrl = "https://www.reuters.com",
+                            IsActive = true,
+                            Name = "Reuters Markets News",
+                            SourceType = "Rss",
+                            TrustScore = 82
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-0000-0000-0000-000000000007"),
+                            BaseUrl = "https://api.gdeltproject.org",
+                            IsActive = true,
+                            Name = "GDELT",
+                            SourceType = "Api",
+                            TrustScore = 60
                         });
                 });
 

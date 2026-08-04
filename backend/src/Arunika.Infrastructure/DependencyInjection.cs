@@ -4,6 +4,7 @@ using Arunika.Infrastructure.AI;
 using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
 using Arunika.Infrastructure.Email;
+using Arunika.Infrastructure.News.Gdelt;
 using Arunika.Infrastructure.News.FinancialModelingPrep;
 using Arunika.Infrastructure.News.Rss;
 using Arunika.Infrastructure.Persistence;
@@ -76,9 +77,17 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(baseUrl);
         });
 
+        services.AddHttpClient<INewsFetcher, GdeltNewsFetcher>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.gdeltproject.org/api/v2/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
         RegisterRssFeed(services, "CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html");
         RegisterRssFeed(services, "MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories");
         RegisterRssFeed(services, "Yahoo Finance", "https://finance.yahoo.com/news/rssindex");
+        RegisterRssFeed(services, "Reuters Business News", "https://feeds.reuters.com/reuters/businessNews");
+        RegisterRssFeed(services, "Reuters Markets News", "https://feeds.reuters.com/reuters/marketsNews");
 
         services.AddScoped<FetchNewsJob>();
         services.AddScoped<EnrichArticleJob>();

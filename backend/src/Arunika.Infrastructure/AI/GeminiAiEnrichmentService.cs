@@ -46,6 +46,16 @@ public class GeminiAiEnrichmentService(
 
     public async Task<ArticleAnalysisResult> AnalyzeAsync(Article article, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(options.Value.ApiKey))
+        {
+            throw new InvalidOperationException("Gemini API key is not configured.");
+        }
+
+        if (rateLimiter.IsQuotaCoolingDown)
+        {
+            throw new InvalidOperationException("Gemini quota cooldown is active.");
+        }
+
         var client = new Client(apiKey: options.Value.ApiKey);
         var prompt = BuildPrompt(article);
         var config = new GenerateContentConfig
@@ -86,6 +96,14 @@ public class GeminiAiEnrichmentService(
                 catch (Exception ex)
                 {
                     lastException = ex;
+
+                    if (IsQuotaExceeded(ex))
+                    {
+                        rateLimiter.MarkQuotaCooldown(TimeSpan.FromHours(1));
+                        throw new InvalidOperationException(
+                            "Gemini quota exceeded; entering cooldown before the next attempt.", ex);
+                    }
+
                     var isRetryable = IsRetryable(ex);
 
                     if (!isRetryable)
@@ -120,17 +138,23 @@ public class GeminiAiEnrichmentService(
 
     private static bool IsRetryable(Exception ex)
     {
+        return !IsUnsupportedModel(ex);
+    }
+
+    private static bool IsQuotaExceeded(Exception ex)
+    {
         var message = ex.ToString();
 
-        if (message.Contains("Quota exceeded for metric", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("You exceeded your current quota", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("is not found for API version", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("is not supported for generateContent", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
+        return message.Contains("Quota exceeded for metric", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("You exceeded your current quota", StringComparison.OrdinalIgnoreCase);
+    }
 
-        return true;
+    private static bool IsUnsupportedModel(Exception ex)
+    {
+        var message = ex.ToString();
+
+        return message.Contains("is not found for API version", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("is not supported for generateContent", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildPrompt(Article article)

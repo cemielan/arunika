@@ -17,9 +17,39 @@ public class GeminiRateLimiter(int maxCallsPerWindow = 12, TimeSpan? window = nu
     private readonly TimeSpan _window = window ?? TimeSpan.FromMinutes(1);
     private readonly Queue<DateTime> _callTimestamps = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly object _cooldownGate = new();
+    private DateTimeOffset _quotaBlockedUntilUtc = DateTimeOffset.MinValue;
+
+    public bool IsQuotaCoolingDown
+    {
+        get
+        {
+            lock (_cooldownGate)
+            {
+                return DateTimeOffset.UtcNow < _quotaBlockedUntilUtc;
+            }
+        }
+    }
+
+    public void MarkQuotaCooldown(TimeSpan duration)
+    {
+        lock (_cooldownGate)
+        {
+            var blockedUntil = DateTimeOffset.UtcNow.Add(duration);
+            if (blockedUntil > _quotaBlockedUntilUtc)
+            {
+                _quotaBlockedUntilUtc = blockedUntil;
+            }
+        }
+    }
 
     public async Task WaitForSlotAsync(CancellationToken cancellationToken = default)
     {
+        if (IsQuotaCoolingDown)
+        {
+            throw new InvalidOperationException("Gemini quota cooldown is active.");
+        }
+
         while (true)
         {
             TimeSpan waitFor;
