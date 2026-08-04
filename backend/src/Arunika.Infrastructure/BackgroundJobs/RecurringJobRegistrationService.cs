@@ -32,10 +32,8 @@ public sealed class RecurringJobRegistrationService(
                     job => job.RunAsync(CancellationToken.None),
                     "20 0 * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
-                recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
-                    "retry-failed-enrichment",
-                    job => job.RunAsync(CancellationToken.None),
-                    "*/10 * * * *");
+                // Pause the automatic retry sweep while Gemini quota is unstable.
+                recurringJobManager.RemoveIfExists("retry-failed-enrichment");
                 recurringJobManager.AddOrUpdate<SendEmailDigestJob>(
                     "send-email-digest",
                     job => job.RunAsync(CancellationToken.None),
