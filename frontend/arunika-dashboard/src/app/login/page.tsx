@@ -5,26 +5,25 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { useAuth } from "@/lib/auth-context";
-
-type FieldErrors = {
-  email?: string;
-  password?: string;
-};
+import {
+  hasAuthFieldErrors,
+  normalizeEmail,
+  validateSignInFields,
+  type AuthFieldErrors,
+} from "@/lib/auth-validation";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn, showNotification } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const [loading, setLoading] = useState(false);
 
   const validate = (): boolean => {
-    const errors: FieldErrors = {};
-    if (!email.trim()) errors.email = "Email is required.";
-    if (!password) errors.password = "Password is required.";
+    const errors = validateSignInFields(email, password);
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return !hasAuthFieldErrors(errors);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +33,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      const normalizedEmail = normalizeEmail(email);
+      await signIn(normalizedEmail, password);
       showNotification({ status: "success", title: "Welcome back", message: "You have been signed in successfully." });
       router.push("/");
     } catch (err) {
@@ -66,7 +66,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })); }}
-              onBlur={() => { if (!email.trim()) setFieldErrors((prev) => ({ ...prev, email: "Email is required." })); }}
+              onBlur={() => setFieldErrors((prev) => ({ ...prev, email: validateSignInFields(email, password).email }))}
               className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.email ? "border-danger" : "border-border"}`}
               placeholder="you@example.com"
             />
@@ -79,7 +79,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-              onBlur={() => { if (!password) setFieldErrors((prev) => ({ ...prev, password: "Password is required." })); }}
+              onBlur={() => setFieldErrors((prev) => ({ ...prev, password: validateSignInFields(email, password).password }))}
               className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
               placeholder="Your password"
             />

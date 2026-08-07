@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { useAuth } from "@/lib/auth-context";
-
-type FieldErrors = {
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-};
+import {
+  hasAuthFieldErrors,
+  normalizeEmail,
+  validateSignUpFields,
+  type AuthFieldErrors,
+} from "@/lib/auth-validation";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,18 +18,13 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const [loading, setLoading] = useState(false);
 
   const validate = (): boolean => {
-    const errors: FieldErrors = {};
-    if (!email.trim()) errors.email = "Email is required.";
-    if (!password) errors.password = "Password is required.";
-    else if (password.length < 8) errors.password = "Password must be at least 8 characters.";
-    if (!confirmPassword) errors.confirmPassword = "Please confirm your password.";
-    else if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match.";
+    const errors = validateSignUpFields(email, password, confirmPassword);
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return !hasAuthFieldErrors(errors);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,12 +32,13 @@ export default function RegisterPage() {
     if (!validate()) return;
 
     setLoading(true);
+    const normalizedEmail = normalizeEmail(email);
 
     try {
-      const needsVerification = await signUp(email, password);
+      const needsVerification = await signUp(normalizedEmail, password);
       if (needsVerification) {
         showNotification({ status: "success", title: "Account created", message: "Check your email for the confirmation link." });
-        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        router.push(`/verify?email=${encodeURIComponent(normalizedEmail)}`);
       } else {
         showNotification({ status: "success", title: "Account created", message: "Welcome to Arunika." });
         router.push("/");
@@ -56,7 +52,7 @@ export default function RegisterPage() {
       }
       if (message.includes("already exists")) {
         showNotification({ status: "success", title: "Account created", message });
-        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        router.push(`/verify?email=${encodeURIComponent(normalizedEmail)}`);
         return;
       }
       showNotification({ status: "danger", title: "Sign up failed", message });
@@ -82,7 +78,7 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })); }}
-              onBlur={() => { if (!email.trim()) setFieldErrors((prev) => ({ ...prev, email: "Email is required." })); }}
+              onBlur={() => setFieldErrors((prev) => ({ ...prev, email: validateSignUpFields(email, password, confirmPassword).email }))}
               className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.email ? "border-danger" : "border-border"}`}
               placeholder="you@example.com"
             />
@@ -95,10 +91,7 @@ export default function RegisterPage() {
               type="password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-              onBlur={() => {
-                if (!password) setFieldErrors((prev) => ({ ...prev, password: "Password is required." }));
-                else if (password.length < 8) setFieldErrors((prev) => ({ ...prev, password: "Password must be at least 8 characters." }));
-              }}
+              onBlur={() => setFieldErrors((prev) => ({ ...prev, password: validateSignUpFields(email, password, confirmPassword).password }))}
               className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
               placeholder="Min. 8 characters"
             />
@@ -111,10 +104,7 @@ export default function RegisterPage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
-              onBlur={() => {
-                if (!confirmPassword) setFieldErrors((prev) => ({ ...prev, confirmPassword: "Please confirm your password." }));
-                else if (password !== confirmPassword) setFieldErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match." }));
-              }}
+              onBlur={() => setFieldErrors((prev) => ({ ...prev, confirmPassword: validateSignUpFields(email, password, confirmPassword).confirmPassword }))}
               className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
               placeholder="Repeat your password"
             />

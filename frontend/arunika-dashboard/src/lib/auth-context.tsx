@@ -6,6 +6,12 @@ import type { User } from "@supabase/supabase-js";
 import { Alert } from "@heroui/react";
 import { getSupabaseClient } from "./supabase";
 import { getMe, siteUrl, upsertMe } from "./api";
+import {
+  normalizeEmail,
+  validateEmail,
+  validatePasswordForSignIn,
+  validatePasswordForSignUp,
+} from "./auth-validation";
 
 export type Notification = {
   status: "danger" | "success";
@@ -48,6 +54,28 @@ function friendlyAuthError(error: { message: string } | null): string {
   return message;
 }
 
+function assertSignInInput(email: string, password: string): string {
+  const normalizedEmail = normalizeEmail(email);
+  const emailError = validateEmail(normalizedEmail);
+  if (emailError) throw new Error(emailError);
+
+  const passwordError = validatePasswordForSignIn(password);
+  if (passwordError) throw new Error(passwordError);
+
+  return normalizedEmail;
+}
+
+function assertSignUpInput(email: string, password: string): string {
+  const normalizedEmail = normalizeEmail(email);
+  const emailError = validateEmail(normalizedEmail);
+  if (emailError) throw new Error(emailError);
+
+  const passwordError = validatePasswordForSignUp(password);
+  if (passwordError) throw new Error(passwordError);
+
+  return normalizedEmail;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -84,33 +112,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+    const normalizedEmail = assertSignInInput(email, password);
+
+    const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
     if (error) throw new Error(friendlyAuthError(error));
 
-    const { data } = await getSupabaseClient().auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) return;
+    if (!data.user?.email_confirmed_at) {
+      await getSupabaseClient().auth.signOut();
+      throw new Error("Please verify your email first.");
+    }
+
+    const sessionResult = await getSupabaseClient().auth.getSession();
+    const token = sessionResult.data.session?.access_token;
+    if (!token) {
+      await getSupabaseClient().auth.signOut();
+      throw new Error("Sign in session could not be established. Please try again.");
+    }
 
     try {
       const me = await getMe(token);
       if (me === null) {
         await upsertMe(token);
+        const hydrated = await getMe(token);
+        if (hydrated === null) {
+          throw new Error("Unable to initialize your account profile. Please contact support.");
+        }
       }
     } catch {
-      // Backend unreachable or failed to answer: fail open so a backend
-      // hiccup never locks legitimate users out.
+      await getSupabaseClient().auth.signOut();
+      throw new Error("Unable to complete sign in because your account profile could not be verified.");
     }
+
     await syncProfile();
   }, [syncProfile]);
 
   const signUp = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const normalizedEmail = assertSignUpInput(email, password);
+
     const { data, error } = await getSupabaseClient().auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         emailRedirectTo: `${siteUrl()}/verify`,
       },
     });
+
+    const maybeIdentities = data.user?.identities;
+    const userAlreadyExists = Array.isArray(maybeIdentities) && maybeIdentities.length === 0;
+
+    if (!error && userAlreadyExists) {
+      throw new Error("An account with this email already exists. Please sign in instead.");
+    }
+
     if (error) {
       const user = data.user as User | null;
       if (error.message.includes("already registered") && user?.email_confirmed_at) {
@@ -118,13 +174,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw new Error(friendlyAuthError(error));
     }
+
     return data.session === null;
   }, []);
 
   const resendConfirmationEmail = useCallback(async (email: string) => {
+    const normalizedEmail = normalizeEmail(email);
+    const emailError = validateEmail(normalizedEmail);
+    if (emailError) throw new Error(emailError);
+
     const { error } = await getSupabaseClient().auth.resend({
       type: "signup",
-      email,
+      email: normalizedEmail,
       options: {
         emailRedirectTo: `${siteUrl()}/verify`,
       },
