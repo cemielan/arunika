@@ -81,16 +81,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [notification, setNotification] = useState<Notification | null>(null);
 
-  useEffect(() => {
-    getSupabaseClient().auth.getSession().then(({ data }) => {
-      setUser(toAppUser(data.session?.user ?? null));
-      setReady(true);
-    });
-    const { data: sub } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
-      setUser(toAppUser(session?.user ?? null));
-    });
-    return () => sub.subscription.unsubscribe();
+  const ensureSupabaseUser = useCallback(async (token: string): Promise<User> => {
+    const { data, error } = await getSupabaseClient().auth.getUser(token);
+    if (error || !data.user?.email) {
+      throw new Error("This session is no longer valid. Please sign in again.");
+    }
+
+    if (!data.user.email_confirmed_at) {
+      throw new Error("Please verify your email first.");
+    }
+
+    return data.user;
   }, []);
+
+  const ensureBackendProfile = useCallback(async (token: string) => {
+    try {
+      const me = await getMe(token);
+      if (me === null) {
+        await upsertMe(token);
+        const hydrated = await getMe(token);
+        if (hydrated === null) {
+          throw new Error("Unable to initialize your account profile. Please contact support.");
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error("Unable to complete sign in because your account profile could not be verified.");
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initializeAuth = async () => {
+      try {
+        const { data } = await getSupabaseClient().auth.getSession();
+        const token = data.session?.access_token;
+
+        if (!token) {
+          if (!cancelled) setUser(null);
+          return;
+        }
+
+        const verifiedUser = await ensureSupabaseUser(token);
+        await ensureBackendProfile(token);
+        if (!cancelled) setUser(toAppUser(verifiedUser));
+      } catch {
+        await getSupabaseClient().auth.signOut();
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    };
+
+    void initializeAuth();
+
+    const { data: sub } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token) {
+        setUser(null);
+        return;
+      }
+
+      void (async () => {
+        try {
+          const verifiedUser = await ensureSupabaseUser(session.access_token);
+          await ensureBackendProfile(session.access_token);
+          if (!cancelled) setUser(toAppUser(verifiedUser));
+        } catch {
+          await getSupabaseClient().auth.signOut();
+          if (!cancelled) setUser(null);
+        }
+      })();
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [ensureBackendProfile, ensureSupabaseUser]);
 
   const dismissNotification = useCallback(() => setNotification(null), []);
 
@@ -120,34 +187,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw new Error(friendlyAuthError(error));
 
-    if (!data.user?.email_confirmed_at) {
-      await getSupabaseClient().auth.signOut();
-      throw new Error("Please verify your email first.");
-    }
-
-    const sessionResult = await getSupabaseClient().auth.getSession();
-    const token = sessionResult.data.session?.access_token;
+    const token = data.session?.access_token;
     if (!token) {
       await getSupabaseClient().auth.signOut();
       throw new Error("Sign in session could not be established. Please try again.");
     }
 
     try {
-      const me = await getMe(token);
-      if (me === null) {
-        await upsertMe(token);
-        const hydrated = await getMe(token);
-        if (hydrated === null) {
-          throw new Error("Unable to initialize your account profile. Please contact support.");
-        }
-      }
-    } catch {
+      const verifiedUser = await ensureSupabaseUser(token);
+      await ensureBackendProfile(token);
+      setUser(toAppUser(verifiedUser));
+    } catch (error) {
       await getSupabaseClient().auth.signOut();
+      if (error instanceof Error) throw error;
       throw new Error("Unable to complete sign in because your account profile could not be verified.");
     }
 
     await syncProfile();
-  }, [syncProfile]);
+  }, [ensureBackendProfile, ensureSupabaseUser, syncProfile]);
 
   const signUp = useCallback(async (email: string, password: string): Promise<boolean> => {
     const normalizedEmail = assertSignUpInput(email, password);

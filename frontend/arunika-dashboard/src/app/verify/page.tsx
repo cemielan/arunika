@@ -46,7 +46,15 @@ function VerifyForm() {
     let cancelled = false;
     const finalize = async () => {
       const { data } = await getSupabaseClient().auth.getSession();
-      if (!data.session) return;
+      if (!data.session?.access_token) return;
+
+      const { data: userData, error: userError } = await getSupabaseClient().auth.getUser(data.session.access_token);
+      if (userError || !userData.user?.email) {
+        setLinkError("This verification session is no longer valid. Please sign in again.");
+        await getSupabaseClient().auth.signOut();
+        return;
+      }
+
       try {
         await upsertMe(data.session.access_token);
       } catch {
