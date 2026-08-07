@@ -94,14 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await getMe(token);
       if (me === null) {
-        await getSupabaseClient().auth.signOut();
-        setUser(null);
-        throw new Error("This account is no longer active. Please contact support.");
+        await upsertMe(token);
       }
-    } catch (err) {
-      if (err instanceof Error && err.message === "This account is no longer active. Please contact support.") {
-        throw err;
-      }
+    } catch {
       // Backend unreachable or failed to answer: fail open so a backend
       // hiccup never locks legitimate users out.
     }
