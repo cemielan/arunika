@@ -126,13 +126,15 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
     public Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default)
         => dbContext.Briefings
             .Include(b => b.Items.OrderBy(i => i.Rank))
-                .ThenInclude(bi => bi.Article)
+                .ThenInclude(bi => bi.Article!)
+                    .ThenInclude(a => a.Analysis)
             .FirstOrDefaultAsync(b => b.BriefingDate == date, cancellationToken);
 
     public Task<Briefing?> GetLatestBriefingAsync(CancellationToken cancellationToken = default)
         => dbContext.Briefings
             .Include(b => b.Items.OrderBy(i => i.Rank))
-                .ThenInclude(bi => bi.Article)
+                .ThenInclude(bi => bi.Article!)
+                    .ThenInclude(a => a.Analysis)
             .OrderByDescending(b => b.BriefingDate)
             .FirstOrDefaultAsync(cancellationToken);
 }

@@ -98,12 +98,11 @@ public static class DependencyInjection
         services.AddHostedService<RecurringJobRegistrationService>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
-        services.AddHttpClient<BrevoEmailService>(client =>
+        services.AddHttpClient<SupabaseEmailService>(client =>
         {
-            client.BaseAddress = new Uri("https://api.brevo.com/v3/");
             client.Timeout = TimeSpan.FromSeconds(15);
         });
-        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<BrevoEmailService>());
+        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<SupabaseEmailService>());
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
+import { Mail } from "lucide-react";
+import { Button, Card, ErrorMessage, Modal, Typography, useOverlayState } from "@heroui/react";
 import { useAuth } from "@/lib/auth-context";
 import {
   hasAuthFieldErrors,
@@ -11,6 +12,11 @@ import {
   validateSignUpFields,
   type AuthFieldErrors,
 } from "@/lib/auth-validation";
+
+type SignupOutcome = {
+  email: string;
+  needsVerification: boolean;
+};
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -20,6 +26,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const [loading, setLoading] = useState(false);
+  const [signupOutcome, setSignupOutcome] = useState<SignupOutcome | null>(null);
+  const modalState = useOverlayState();
 
   const validate = (): boolean => {
     const errors = validateSignUpFields(email, password, confirmPassword);
@@ -36,13 +44,8 @@ export default function RegisterPage() {
 
     try {
       const needsVerification = await signUp(normalizedEmail, password);
-      if (needsVerification) {
-        showNotification({ status: "success", title: "Account created", message: "Check your email for the confirmation link." });
-        router.push(`/verify?email=${encodeURIComponent(normalizedEmail)}`);
-      } else {
-        showNotification({ status: "success", title: "Account created", message: "Welcome to Arunika." });
-        router.push("/");
-      }
+      setSignupOutcome({ email: normalizedEmail, needsVerification });
+      modalState.open();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed";
       if (message.includes("sign in instead")) {
@@ -58,6 +61,17 @@ export default function RegisterPage() {
       showNotification({ status: "danger", title: "Sign up failed", message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinue = () => {
+    modalState.close();
+    if (signupOutcome?.needsVerification) {
+      showNotification({ status: "success", title: "Account created", message: "Check your email for the confirmation link." });
+      router.push(`/verify?email=${encodeURIComponent(signupOutcome.email)}`);
+    } else {
+      showNotification({ status: "success", title: "Account created", message: "Welcome to Arunika." });
+      router.push("/");
     }
   };
 
@@ -124,6 +138,36 @@ export default function RegisterPage() {
         </Link>
         .
       </Typography.Paragraph>
+
+      {signupOutcome && (
+        <Modal state={modalState}>
+          <Modal.Backdrop isDismissable={false} />
+          <Modal.Container size="sm">
+            <Modal.Dialog>
+              <Modal.Header>
+                <Modal.Icon className="text-accent">
+                  <Mail className="h-5 w-5" />
+                </Modal.Icon>
+                <Modal.Heading className="text-lg">Daily email summary</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <Typography.Paragraph size="sm" className="leading-relaxed">
+                  Welcome to Arunika, {signupOutcome.email}.
+                </Typography.Paragraph>
+                <Typography.Paragraph size="sm" color="muted" className="leading-relaxed">
+                  We will use your email to send you the day&apos;s briefing summary every morning,
+                  shortly after it is generated. You can opt out of these emails at any time.
+                </Typography.Paragraph>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="primary" onPress={handleContinue}>
+                  Got it
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -433,3 +433,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# graphify knowledge graph outputs
+graphify-out/
