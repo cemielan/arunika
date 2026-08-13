@@ -19,7 +19,11 @@ public class SendEmailDigestJob(
     IEmailService emailService,
     ILogger<SendEmailDigestJob> logger)
 {
-    public async Task RunAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Runs the digest and returns the number of emails actually sent (0 when
+    /// there was nothing to send or no subscribers matched).
+    /// </summary>
+    public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         var briefing = await articleAnalysisRepository.GetBriefingByDateAsync(JakartaToday(), cancellationToken)
@@ -37,7 +41,7 @@ public class SendEmailDigestJob(
         if (articles.Count == 0)
         {
             logger.LogInformation("SendEmailDigestJob: no enriched articles or briefing available; skipping.");
-            return;
+            return 0;
         }
 
         var users = await userRepository.GetDigestSubscribersAsync(cancellationToken);
@@ -45,7 +49,7 @@ public class SendEmailDigestJob(
         if (users.Count == 0)
         {
             logger.LogInformation("SendEmailDigestJob: no digest subscribers; skipping.");
-            return;
+            return 0;
         }
 
         var digestHtml = BuildDigestHtml(briefing, articles);
@@ -68,6 +72,8 @@ public class SendEmailDigestJob(
 
         logger.LogInformation("SendEmailDigestJob: sent digest to {Count} user(s) with {ArticleCount} articles.",
             users.Count, articles.Count);
+
+        return users.Count;
     }
 
     private static string BuildDigestHtml(Briefing? briefing, IReadOnlyList<Article> articles)

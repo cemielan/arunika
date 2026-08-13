@@ -61,4 +61,31 @@ public class AdminController(IBackgroundJobClient backgroundJobClient, IConfigur
         var report = await fetchNewsJob.RunWithReportAsync(cancellationToken);
         return Ok(report);
     }
+
+    [HttpPost("jobs/send-digest")]
+    [ProducesResponseType(typeof(DigestSendResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> TriggerSendDigest(
+        [FromServices] SendEmailDigestJob sendEmailDigestJob,
+        [FromHeader(Name = "X-Admin-Key")] string? adminKey,
+        CancellationToken cancellationToken)
+    {
+        var configuredKey = configuration["Admin:TriggerKey"];
+        if (string.IsNullOrEmpty(configuredKey))
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new ApiErrorEnvelope(new ApiErrorDetail("ADMIN_DISABLED", "Admin:TriggerKey is not configured.")));
+        }
+
+        if (adminKey != configuredKey)
+        {
+            return Unauthorized(new ApiErrorEnvelope(new ApiErrorDetail("UNAUTHORIZED", "Invalid or missing X-Admin-Key header.")));
+        }
+
+        var sent = await sendEmailDigestJob.RunAsync(cancellationToken);
+        return Ok(new DigestSendResult(sent));
+    }
 }
+
+public sealed record DigestSendResult(int Sent);
