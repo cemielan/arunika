@@ -4,12 +4,26 @@ public class EmailOptions
 {
     public const string SectionName = "Email";
 
-    /// <summary>Supabase project URL, e.g. https://abcdefgh.supabase.co.</summary>
-    public string SupabaseUrl { get; set; } = string.Empty;
+    /// <summary>SMTP server settings (e.g. smtp.gmail.com on port 587).</summary>
+    public SmtpOptions Smtp { get; set; } = new();
 
-    /// <summary>Supabase service role key (server-side only).</summary>
-    public string SupabaseServiceRoleKey { get; set; } = string.Empty;
+    /// <summary>Sender address shown in the recipient's inbox.</summary>
+    public string FromEmail { get; set; } = "arunika.noreply@gmail.com";
 
     public string FromName { get; set; } = "Arunika";
+
     public string FrontendUrl { get; set; } = "http://localhost:3000";
+}
+
+public class SmtpOptions
+{
+    public string Host { get; set; } = string.Empty;
+
+    public int Port { get; set; } = 587;
+
+    public bool EnableSsl { get; set; } = true;
+
+    public string Username { get; set; } = string.Empty;
+
+    public string Password { get; set; } = string.Empty;
 }

@@ -1,7 +1,9 @@
 using System.Text;
 using Arunika.Application.Abstractions;
 using Arunika.Domain.Entities;
+using Arunika.Infrastructure.Email;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arunika.Infrastructure.BackgroundJobs;
 
@@ -17,6 +19,7 @@ public class SendEmailDigestJob(
     IArticleAnalysisRepository articleAnalysisRepository,
     IUserRepository userRepository,
     IEmailService emailService,
+    IOptions<EmailOptions> emailOptions,
     ILogger<SendEmailDigestJob> logger)
 {
     /// <summary>
@@ -52,7 +55,7 @@ public class SendEmailDigestJob(
             return 0;
         }
 
-        var digestHtml = BuildDigestHtml(briefing, articles);
+        var digestHtml = BuildDigestHtml(briefing, articles, emailOptions.Value.FrontendUrl);
 
         foreach (var user in users)
         {
@@ -76,7 +79,7 @@ public class SendEmailDigestJob(
         return users.Count;
     }
 
-    private static string BuildDigestHtml(Briefing? briefing, IReadOnlyList<Article> articles)
+    private static string BuildDigestHtml(Briefing? briefing, IReadOnlyList<Article> articles, string frontendUrl)
     {
         var sb = new StringBuilder();
         sb.Append("""
@@ -104,6 +107,7 @@ public class SendEmailDigestJob(
         var date = DateTimeOffset.UtcNow.ToString("MMMM dd, yyyy");
         sb.Replace("{Date}", date);
         sb.Replace("{Count}", articles.Count.ToString());
+        sb.Replace("{FrontendUrl}", frontendUrl);
 
         if (briefing is not null)
         {
@@ -138,7 +142,7 @@ public class SendEmailDigestJob(
 
         sb.Append("""
             <p class="footer">You are receiving this because you subscribed to the Arunika daily digest.
-            <a href="{UnsubscribeUrl}">Unsubscribe</a></p>
+            <a href="{FrontendUrl}">Arunika</a></p>
             </body></html>
             """);
 
