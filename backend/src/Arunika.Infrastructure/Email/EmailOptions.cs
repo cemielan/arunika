@@ -4,10 +4,10 @@ public class EmailOptions
 {
     public const string SectionName = "Email";
 
-    /// <summary>Supabase project URL, e.g. https://abcdefgh.supabase.co.</summary>
-    public string SupabaseUrl { get; set; } = string.Empty;
-
-    /// <summary>Supabase service role key (server-side only).</summary>
+    /// <summary>
+    /// Supabase service role key (server-side only). The Supabase project URL is
+    /// reused from the <c>Supabase:Url</c> section (already required for JWT auth).
+    /// </summary>
     public string SupabaseServiceRoleKey { get; set; } = string.Empty;
 
     public string FromName { get; set; } = "Arunika";

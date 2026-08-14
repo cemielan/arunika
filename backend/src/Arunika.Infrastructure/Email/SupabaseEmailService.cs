@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Arunika.Application.Abstractions;
+using Arunika.Infrastructure.Auth;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -24,6 +25,7 @@ namespace Arunika.Infrastructure.Email;
 public class SupabaseEmailService(
     HttpClient httpClient,
     IOptions<EmailOptions> options,
+    IOptions<SupabaseOptions> supabaseOptions,
     ILogger<SupabaseEmailService> logger) : IEmailService
 {
     private const string UsersPath = "/auth/v1/admin/users";
@@ -32,18 +34,14 @@ public class SupabaseEmailService(
     public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
         var opts = options.Value;
-
-        if (string.IsNullOrWhiteSpace(opts.SupabaseUrl))
-        {
-            throw new InvalidOperationException("Supabase URL not configured. Set Email:SupabaseUrl.");
-        }
+        var baseUrl = supabaseOptions.Value.Url.TrimEnd('/');
 
         if (string.IsNullOrWhiteSpace(opts.SupabaseServiceRoleKey))
         {
             throw new InvalidOperationException("Supabase service role key not configured. Set Email:SupabaseServiceRoleKey.");
         }
 
-        if (!await UserExistsAsync(to, opts, cancellationToken))
+        if (!await UserExistsAsync(baseUrl, opts.SupabaseServiceRoleKey, to, cancellationToken))
         {
             logger.LogWarning(
                 "Email not sent: {To} is not a Supabase Auth user, so GoTrue would drop it. Subject: {Subject}", to, subject);
@@ -58,7 +56,7 @@ public class SupabaseEmailService(
             html_body = htmlBody,
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{opts.SupabaseUrl.TrimEnd('/')}{SendPath}")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}{SendPath}")
         {
             Content = JsonContent.Create(payload),
         };
@@ -90,12 +88,12 @@ public class SupabaseEmailService(
         logger.LogInformation("Email accepted by Supabase for delivery to {To}, subject: {Subject}", to, subject);
     }
 
-    private async Task<bool> UserExistsAsync(string email, EmailOptions opts, CancellationToken cancellationToken)
+    private async Task<bool> UserExistsAsync(string baseUrl, string serviceRoleKey, string email, CancellationToken cancellationToken)
     {
         var query = $"?filter={Uri.EscapeDataString(email)}";
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{opts.SupabaseUrl.TrimEnd('/')}{UsersPath}{query}");
-        request.Headers.Add("Authorization", $"Bearer {opts.SupabaseServiceRoleKey}");
-        request.Headers.Add("apikey", opts.SupabaseServiceRoleKey);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}{UsersPath}{query}");
+        request.Headers.Add("Authorization", $"Bearer {serviceRoleKey}");
+        request.Headers.Add("apikey", serviceRoleKey);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
