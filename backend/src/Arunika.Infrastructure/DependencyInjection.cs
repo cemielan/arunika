@@ -98,11 +98,11 @@ public static class DependencyInjection
         services.AddHostedService<RecurringJobRegistrationService>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
-        services.AddHttpClient<SupabaseEmailService>(client =>
+        services.AddHttpClient<EdgeFunctionEmailService>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(20);
+            client.Timeout = TimeSpan.FromSeconds(30);
         });
-        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<SupabaseEmailService>());
+        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<EdgeFunctionEmailService>());
 
         services.AddHangfire(hangfire => hangfire
             .UseSimpleAssemblyNameTypeSerializer()

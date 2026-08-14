@@ -5,10 +5,13 @@ public class EmailOptions
     public const string SectionName = "Email";
 
     /// <summary>
-    /// Supabase service role key (server-side only). The Supabase project URL is
-    /// reused from the <c>Supabase:Url</c> section (already required for JWT auth).
+    /// Shared secret that must be sent with every call to the Supabase edge
+    /// function (must match the function's SEND_SECRET env var).
     /// </summary>
-    public string SupabaseServiceRoleKey { get; set; } = string.Empty;
+    public string EdgeFunctionSecret { get; set; } = string.Empty;
+
+    /// <summary>Name of the deployed edge function (defaults to send-digest-email).</summary>
+    public string EdgeFunctionName { get; set; } = "send-digest-email";
 
     public string FromName { get; set; } = "Arunika";
 
