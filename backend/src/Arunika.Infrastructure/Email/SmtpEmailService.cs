@@ -26,8 +26,10 @@ public class SmtpEmailService(
             || string.IsNullOrWhiteSpace(smtp.Username)
             || string.IsNullOrWhiteSpace(smtp.Password))
         {
-            logger.LogWarning("Email not sent: SMTP not configured. To: {To}, Subject: {Subject}", to, subject);
-            return;
+            logger.LogWarning(
+                "Email not sent: SMTP not configured. Set Email:Smtp:Host, Email:Smtp:Username and Email:Smtp:Password. "
+                + "To: {To}, Subject: {Subject}", to, subject);
+            throw new InvalidOperationException("SMTP is not configured. Set Email:Smtp:Host, Email:Smtp:Username and Email:Smtp:Password.");
         }
 
         using var client = new SmtpClient(smtp.Host, smtp.Port)

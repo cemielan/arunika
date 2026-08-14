@@ -22,11 +22,21 @@ public class SendEmailDigestJob(
     IOptions<EmailOptions> emailOptions,
     ILogger<SendEmailDigestJob> logger)
 {
+    /// <summary>Per-run outcome; <see cref="Error"/> is the first failure seen.</summary>
+    public sealed record DigestSendRunResult(int Sent, int Failed, string? Error);
+
     /// <summary>
     /// Runs the digest and returns the number of emails actually sent (0 when
     /// there was nothing to send or no subscribers matched).
     /// </summary>
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
+        => (await RunWithReportAsync(cancellationToken)).Sent;
+
+    /// <summary>
+    /// Runs the digest and reports how many emails were actually delivered vs
+    /// failed, so manual/triggered runs can be diagnosed.
+    /// </summary>
+    public async Task<DigestSendRunResult> RunWithReportAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         var briefing = await articleAnalysisRepository.GetBriefingByDateAsync(JakartaToday(), cancellationToken)
@@ -44,7 +54,7 @@ public class SendEmailDigestJob(
         if (articles.Count == 0)
         {
             logger.LogInformation("SendEmailDigestJob: no enriched articles or briefing available; skipping.");
-            return 0;
+            return new DigestSendRunResult(0, 0, "No articles or briefing available to include in the digest.");
         }
 
         var users = await userRepository.GetDigestSubscribersAsync(cancellationToken);
@@ -52,10 +62,14 @@ public class SendEmailDigestJob(
         if (users.Count == 0)
         {
             logger.LogInformation("SendEmailDigestJob: no digest subscribers; skipping.");
-            return 0;
+            return new DigestSendRunResult(0, 0, "No digest subscribers (users with EmailVerified = true).");
         }
 
         var digestHtml = BuildDigestHtml(briefing, articles, emailOptions.Value.FrontendUrl);
+
+        var sent = 0;
+        var failed = 0;
+        string? firstError = null;
 
         foreach (var user in users)
         {
@@ -66,17 +80,20 @@ public class SendEmailDigestJob(
                     $"Arunika Daily Digest — {now:MMMM dd, yyyy}",
                     digestHtml,
                     cancellationToken);
+                sent++;
             }
             catch (Exception ex)
             {
+                failed++;
+                firstError ??= $"{user.Email}: {ex.Message}";
                 logger.LogError(ex, "SendEmailDigestJob: failed to send digest to {Email}.", user.Email);
             }
         }
 
-        logger.LogInformation("SendEmailDigestJob: sent digest to {Count} user(s) with {ArticleCount} articles.",
-            users.Count, articles.Count);
+        logger.LogInformation("SendEmailDigestJob: sent digest to {Sent} user(s) with {ArticleCount} articles ({Failed} failed).",
+            sent, articles.Count, failed);
 
-        return users.Count;
+        return new DigestSendRunResult(sent, failed, firstError);
     }
 
     private static string BuildDigestHtml(Briefing? briefing, IReadOnlyList<Article> articles, string frontendUrl)
