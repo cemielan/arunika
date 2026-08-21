@@ -436,3 +436,6 @@ FodyWeavers.xsd
 
 # graphify knowledge graph outputs
 graphify-out/
+
+# Supabase CLI temp files
+supabase/.temp/

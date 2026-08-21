@@ -23,7 +23,7 @@ supabase secrets set `
 if ($LASTEXITCODE -ne 0) { throw "supabase secrets set failed" }
 
 Write-Host "3/3 Deploying function..."
-supabase functions deploy send-digest-email --no-verify-jwt --cpu-time 20000
+supabase functions deploy send-digest-email --no-verify-jwt
 if ($LASTEXITCODE -ne 0) { throw "supabase functions deploy failed" }
 
 Write-Host ""
