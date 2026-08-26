@@ -109,22 +109,25 @@ public class SendEmailDigestJob(
               .summary { background: #f6f6f6; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
               .summary h2 { font-size: 16px; margin: 0 0 8px; }
               .summary p { font-size: 13px; line-height: 1.6; color: #333; margin: 0; }
-              .tag { display: inline-block; background: #e8e8e8; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; margin-bottom: 8px; }
+              .tag { display: inline-block; background: #e8e8e8; color: #444; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; margin-bottom: 8px; }
+              .tag-bullish { background: #dcfce7; color: #15803d; }
+              .tag-bearish { background: #fee2e2; color: #b91c1c; }
+              .tag-high { background: #fee2e2; color: #b91c1c; }
+              .tag-medium { background: #fef3c7; color: #b45309; }
+              .tag-low { background: #dcfce7; color: #15803d; }
               .story { padding: 12px 0; border-bottom: 1px solid #eee; }
               .story:last-child { border-bottom: none; }
               .story h3 { font-size: 15px; margin: 0 0 4px; }
+              .story h3 a { color: #1a1a1a; text-decoration: none; }
               .story p { font-size: 13px; color: #444; margin: 0; }
+              .cta { display: inline-block; background: #f59e0b; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; margin: 8px 0 24px; }
               .footer { margin-top: 24px; font-size: 12px; color: #999; }
             </style></head>
             <body>
             <h1>Arunika Daily Digest</h1>
             <p class="meta">{Date} — {Count} top stories</p>
+            <a class="cta" href="{FrontendUrl}">Open Arunika →</a>
             """);
-
-        var date = DateTimeOffset.UtcNow.ToString("MMMM dd, yyyy");
-        sb.Replace("{Date}", date);
-        sb.Replace("{Count}", articles.Count.ToString());
-        sb.Replace("{FrontendUrl}", frontendUrl);
 
         if (briefing is not null)
         {
@@ -132,9 +135,9 @@ public class SendEmailDigestJob(
             sb.Append("<h2>Today's Summary</h2>");
             sb.Append("<p>");
             if (!string.IsNullOrEmpty(briefing.OverallSentiment.ToString()))
-                sb.Append($"<span class=\"tag\">{EscapeHtml(briefing.OverallSentiment.ToString())}</span>");
+                sb.Append($"<span class=\"tag {SentimentClass(briefing.OverallSentiment.ToString())}\">{EscapeHtml(briefing.OverallSentiment.ToString())}</span>");
             if (!string.IsNullOrEmpty(briefing.RiskLevel.ToString()))
-                sb.Append($"<span class=\"tag\">{EscapeHtml(briefing.RiskLevel.ToString())} risk</span>");
+                sb.Append($"<span class=\"tag {RiskClass(briefing.RiskLevel.ToString())}\">{EscapeHtml(briefing.RiskLevel.ToString())} risk</span>");
             sb.Append("</p>");
             sb.Append($"<p>{EscapeHtml(briefing.ExecutiveSummary)}</p>");
             sb.Append("</div>");
@@ -147,13 +150,13 @@ public class SendEmailDigestJob(
             var sentiment = article.Analysis?.Sentiment.ToString() ?? "";
 
             sb.Append("<div class=\"story\">");
-            sb.Append($"<h3>{EscapeHtml(article.Title)}</h3>");
+            sb.Append($"<h3><a href=\"{EscapeHtml(frontendUrl)}\">{EscapeHtml(article.Title)}</a></h3>");
             sb.Append($"<p>{EscapeHtml(summary)}</p>");
             sb.Append("<p>");
             if (!string.IsNullOrEmpty(category))
                 sb.Append($"<span class=\"tag\">{EscapeHtml(category)}</span>");
             if (!string.IsNullOrEmpty(sentiment))
-                sb.Append($"<span class=\"tag\">{EscapeHtml(sentiment)}</span>");
+                sb.Append($"<span class=\"tag {SentimentClass(sentiment)}\">{EscapeHtml(sentiment)}</span>");
             sb.Append("</p></div>");
         }
 
@@ -163,8 +166,28 @@ public class SendEmailDigestJob(
             </body></html>
             """);
 
+        var date = DateTimeOffset.UtcNow.ToString("MMMM dd, yyyy");
+        sb.Replace("{Date}", date);
+        sb.Replace("{Count}", articles.Count.ToString());
+        sb.Replace("{FrontendUrl}", frontendUrl);
+
         return sb.ToString();
     }
+
+    private static string SentimentClass(string sentiment) => sentiment.ToLowerInvariant() switch
+    {
+        "bullish" => "tag-bullish",
+        "bearish" => "tag-bearish",
+        _ => ""
+    };
+
+    private static string RiskClass(string risk) => risk.ToLowerInvariant() switch
+    {
+        "high" => "tag-high",
+        "medium" => "tag-medium",
+        "low" => "tag-low",
+        _ => ""
+    };
 
     private static DateOnly JakartaToday()
     {
