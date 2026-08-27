@@ -120,7 +120,7 @@ public class SendEmailDigestJob(
               .story h3 { font-size: 15px; margin: 0 0 4px; }
               .story h3 a { color: #1a1a1a; text-decoration: none; }
               .story p { font-size: 13px; color: #444; margin: 0; }
-              .cta { display: inline-block; background: #f59e0b; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; margin: 8px 0 24px; }
+              .cta { display: inline-block; background: #1a1a1a; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; margin: 8px 0 24px; }
               .footer { margin-top: 24px; font-size: 12px; color: #999; }
             </style></head>
             <body>
