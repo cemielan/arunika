@@ -37,7 +37,11 @@ public static class DependencyInjection
         services.Configure<SupabaseOptions>(configuration.GetSection(SupabaseOptions.SectionName));
 
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
-        services.AddSingleton<GeminiRateLimiter>();
+        services.AddSingleton(sp =>
+        {
+            var geminiOptions = sp.GetRequiredService<IOptions<GeminiOptions>>().Value;
+            return new GeminiRateLimiter(geminiOptions.MaxRequestsPerMinute);
+        });
         services.AddScoped<GeminiAiEnrichmentService>();
         services.AddScoped<BriefingGenerationService>();
 
@@ -45,12 +49,17 @@ public static class DependencyInjection
         services.AddScoped<OpenRouterAiEnrichmentService>();
         services.AddScoped<OpenRouterBriefingGenerationService>();
 
+        services.Configure<AiOptions>(configuration.GetSection(AiOptions.SectionName));
+
         services.AddScoped<IAiEnrichmentService>(sp =>
         {
             var gemini = sp.GetRequiredService<GeminiAiEnrichmentService>();
             var openRouter = sp.GetRequiredService<OpenRouterAiEnrichmentService>();
+            var aiOptions = sp.GetRequiredService<IOptions<AiOptions>>().Value;
+            var openRouterFirst = string.Equals(aiOptions.PreferredProvider, "OpenRouter", StringComparison.OrdinalIgnoreCase);
+            IAiEnrichmentService[] ordered = openRouterFirst ? [openRouter, gemini] : [gemini, openRouter];
             var logger = sp.GetRequiredService<ILogger<CompositeAiEnrichmentService>>();
-            return new CompositeAiEnrichmentService([gemini, openRouter], logger);
+            return new CompositeAiEnrichmentService(ordered, logger);
         });
 
         services.AddScoped<DailyBriefingService>();
@@ -59,8 +68,11 @@ public static class DependencyInjection
         {
             var gemini = sp.GetRequiredService<BriefingGenerationService>();
             var openRouter = sp.GetRequiredService<OpenRouterBriefingGenerationService>();
+            var aiOptions = sp.GetRequiredService<IOptions<AiOptions>>().Value;
+            var openRouterFirst = string.Equals(aiOptions.PreferredProvider, "OpenRouter", StringComparison.OrdinalIgnoreCase);
+            IBriefingGenerationService[] ordered = openRouterFirst ? [openRouter, gemini] : [gemini, openRouter];
             var logger = sp.GetRequiredService<ILogger<CompositeBriefingGenerationService>>();
-            return new CompositeBriefingGenerationService([gemini, openRouter], logger);
+            return new CompositeBriefingGenerationService(ordered, logger);
         });
 
         services.AddHttpClient("openrouter", (sp, client) =>
@@ -68,6 +80,8 @@ public static class DependencyInjection
             var opts = sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value;
             client.BaseAddress = new Uri(opts.BaseUrl);
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {opts.ApiKey}");
+            client.DefaultRequestHeaders.Add("HTTP-Referer", "https://github.com/arunika");
+            client.DefaultRequestHeaders.Add("X-Title", "Arunika");
         });
 
         services.Configure<FinancialModelingPrepOptions>(configuration.GetSection(FinancialModelingPrepOptions.SectionName));
