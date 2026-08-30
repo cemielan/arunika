@@ -12,13 +12,15 @@ namespace Arunika.Infrastructure.AI;
 /// quota is (almost) never hit in the first place, instead of just retrying after
 /// the fact.
 /// </summary>
-public class GeminiRateLimiter(int maxCallsPerWindow = 12, TimeSpan? window = null)
+public class GeminiRateLimiter(int maxCallsPerWindow = 8, TimeSpan? window = null)
 {
     private readonly TimeSpan _window = window ?? TimeSpan.FromMinutes(1);
     private readonly Queue<DateTime> _callTimestamps = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly object _cooldownGate = new();
     private DateTimeOffset _quotaBlockedUntilUtc = DateTimeOffset.MinValue;
+    private DateTime _lastCallTime = DateTime.MinValue;
+    private readonly TimeSpan _minDelayBetweenCalls = TimeSpan.FromMilliseconds(800);
 
     public bool IsQuotaCoolingDown
     {
@@ -57,18 +59,28 @@ public class GeminiRateLimiter(int maxCallsPerWindow = 12, TimeSpan? window = nu
             try
             {
                 var now = DateTime.UtcNow;
-                while (_callTimestamps.Count > 0 && now - _callTimestamps.Peek() >= _window)
-                {
-                    _callTimestamps.Dequeue();
-                }
 
-                if (_callTimestamps.Count < maxCallsPerWindow)
+                var timeSinceLastCall = now - _lastCallTime;
+                if (timeSinceLastCall < _minDelayBetweenCalls)
                 {
-                    _callTimestamps.Enqueue(now);
-                    return;
+                    waitFor = _minDelayBetweenCalls - timeSinceLastCall;
                 }
+                else
+                {
+                    while (_callTimestamps.Count > 0 && now - _callTimestamps.Peek() >= _window)
+                    {
+                        _callTimestamps.Dequeue();
+                    }
 
-                waitFor = _window - (now - _callTimestamps.Peek()) + TimeSpan.FromMilliseconds(50);
+                    if (_callTimestamps.Count < maxCallsPerWindow)
+                    {
+                        _callTimestamps.Enqueue(now);
+                        _lastCallTime = now;
+                        return;
+                    }
+
+                    waitFor = _window - (now - _callTimestamps.Peek()) + TimeSpan.FromMilliseconds(100);
+                }
             }
             finally
             {
