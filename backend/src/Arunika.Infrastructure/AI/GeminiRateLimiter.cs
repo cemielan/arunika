@@ -1,21 +1,16 @@
 namespace Arunika.Infrastructure.AI;
 
 /// <summary>
-/// Simple in-process sliding-window rate limiter shared across every
-/// <see cref="GeminiAiEnrichmentService"/> call. The Gemini API key this project
-/// uses is on the free tier, which only allows ~15 requests/minute per model —
-/// without this limiter, a burst of newly-fetched articles (or a batch of retries
-/// from <c>RetryFailedEnrichmentJob</c>) blows straight through that quota because
-/// Hangfire runs up to 20 <c>EnrichArticleJob</c> workers concurrently. That 429
-/// ("quota exceeded") is the actual root cause behind articles that never get a
-/// summary/impact score (see design doc §5) — this limiter paces calls so the
-/// quota is (almost) never hit in the first place, instead of just retrying after
-/// the fact.
+/// In-process sliding-window rate limiter for Gemini API.
+/// Enforces both RPM (requests per minute) and RPD (requests per day) limits.
+/// Free tier Flash-Lite: 30 RPM, 1000+ RPD. Free tier Flash: 15 RPM, 20 RPD.
 /// </summary>
-public class GeminiRateLimiter(int maxCallsPerWindow = 12, TimeSpan? window = null)
+public class GeminiRateLimiter(int maxCallsPerMinute = 12, int maxCallsPerDay = 900, TimeSpan? minuteWindow = null)
 {
-    private readonly TimeSpan _window = window ?? TimeSpan.FromMinutes(1);
-    private readonly Queue<DateTime> _callTimestamps = new();
+    private readonly TimeSpan _minuteWindow = minuteWindow ?? TimeSpan.FromMinutes(1);
+    private readonly TimeSpan _dayWindow = TimeSpan.FromDays(1);
+    private readonly Queue<DateTime> _minuteCalls = new();
+    private readonly Queue<DateTime> _dailyCalls = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly object _cooldownGate = new();
     private DateTimeOffset _quotaBlockedUntilUtc = DateTimeOffset.MinValue;
@@ -57,18 +52,37 @@ public class GeminiRateLimiter(int maxCallsPerWindow = 12, TimeSpan? window = nu
             try
             {
                 var now = DateTime.UtcNow;
-                while (_callTimestamps.Count > 0 && now - _callTimestamps.Peek() >= _window)
+
+                while (_minuteCalls.Count > 0 && now - _minuteCalls.Peek() >= _minuteWindow)
                 {
-                    _callTimestamps.Dequeue();
+                    _minuteCalls.Dequeue();
                 }
 
-                if (_callTimestamps.Count < maxCallsPerWindow)
+                while (_dailyCalls.Count > 0 && now - _dailyCalls.Peek() >= _dayWindow)
                 {
-                    _callTimestamps.Enqueue(now);
+                    _dailyCalls.Dequeue();
+                }
+
+                bool minuteOk = _minuteCalls.Count < maxCallsPerMinute;
+                bool dailyOk = _dailyCalls.Count < maxCallsPerDay;
+
+                if (minuteOk && dailyOk)
+                {
+                    _minuteCalls.Enqueue(now);
+                    _dailyCalls.Enqueue(now);
                     return;
                 }
 
-                waitFor = _window - (now - _callTimestamps.Peek()) + TimeSpan.FromMilliseconds(50);
+                if (!dailyOk)
+                {
+                    var oldestDaily = _dailyCalls.Peek();
+                    waitFor = _dayWindow - (now - oldestDaily) + TimeSpan.FromSeconds(10);
+                }
+                else
+                {
+                    var oldestMinute = _minuteCalls.Peek();
+                    waitFor = _minuteWindow - (now - oldestMinute) + TimeSpan.FromMilliseconds(50);
+                }
             }
             finally
             {

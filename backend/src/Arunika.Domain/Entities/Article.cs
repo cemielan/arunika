@@ -14,6 +14,7 @@ public class Article
     public required string DedupeHash { get; set; }
     public Guid? DuplicateOfId { get; set; }
     public EnrichmentStatus EnrichmentStatus { get; set; } = EnrichmentStatus.Pending;
+    public int EnrichmentRetryCount { get; set; }
 
     public NewsSource? Source { get; set; }
     public Article? DuplicateOf { get; set; }

@@ -12,16 +12,17 @@ using SchemaType = Google.GenAI.Types.Type;
 namespace Arunika.Infrastructure.AI;
 
 /// <summary>
-/// Wraps the Gemini Developer API behind <see cref="IAiEnrichmentService"/>
-/// (design doc §5): one structured-output call per article, combining
-/// summary, classification, sentiment, impact score, sector impact, and
-/// keywords, instead of six separate calls.
-/// </summary>
-public class GeminiAiEnrichmentService(
-    IOptions<GeminiOptions> options,
-    GeminiRateLimiter rateLimiter,
-    ILogger<GeminiAiEnrichmentService> logger)
-    : IAiEnrichmentService
+    /// Wraps the Gemini Developer API behind <see cref="IAiEnrichmentService"/>
+    /// (design doc §5): one structured-output call per article, combining
+    /// summary, classification, sentiment, impact score, sector impact, and
+    /// keywords, instead of six separate calls.
+    /// </summary>
+    public class GeminiAiEnrichmentService(
+        IOptions<GeminiOptions> options,
+        GeminiRateLimiter rateLimiter,
+        GeminiCircuitBreaker circuitBreaker,
+        ILogger<GeminiAiEnrichmentService> logger)
+        : IAiEnrichmentService
 {
     private const int MaxAttempts = 3;
     private const int MaxContentChars = 6000;
@@ -72,6 +73,11 @@ public class GeminiAiEnrichmentService(
 
         foreach (var model in modelsToTry)
         {
+            if (!circuitBreaker.IsAvailable(model))
+            {
+                logger.LogWarning("Gemini circuit breaker open for model {Model}; skipping.", model);
+                continue;
+            }
             for (var attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 try
@@ -91,6 +97,7 @@ public class GeminiAiEnrichmentService(
                     var payload = JsonSerializer.Deserialize<GeminiAnalysisPayload>(text, JsonOptions)
                         ?? throw new InvalidOperationException("Gemini response could not be parsed as JSON.");
 
+                    circuitBreaker.RecordSuccess(model);
                     return MapToResult(payload, model);
                 }
                 catch (Exception ex)
@@ -100,6 +107,7 @@ public class GeminiAiEnrichmentService(
                     if (IsQuotaExceeded(ex))
                     {
                         rateLimiter.MarkQuotaCooldown(TimeSpan.FromHours(1));
+                        circuitBreaker.RecordFailure(model);
                         throw new InvalidOperationException(
                             "Gemini quota exceeded; entering cooldown before the next attempt.", ex);
                     }
@@ -111,6 +119,7 @@ public class GeminiAiEnrichmentService(
                         logger.LogWarning(ex,
                             "Gemini enrichment failed with a non-retryable error for model {Model} and article {ArticleId}; trying next fallback.",
                             model, article.Id);
+                        circuitBreaker.RecordFailure(model);
                         break;
                     }
 
@@ -127,6 +136,7 @@ public class GeminiAiEnrichmentService(
                         logger.LogWarning(ex,
                             "Gemini enrichment exhausted {MaxAttempts} attempts with model {Model} for article {ArticleId}; trying next fallback.",
                             MaxAttempts, model, article.Id);
+                        circuitBreaker.RecordFailure(model);
                     }
                 }
             }

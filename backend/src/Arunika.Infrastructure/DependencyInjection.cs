@@ -40,8 +40,10 @@ public static class DependencyInjection
         services.AddSingleton(sp =>
         {
             var geminiOptions = sp.GetRequiredService<IOptions<GeminiOptions>>().Value;
-            return new GeminiRateLimiter(geminiOptions.MaxRequestsPerMinute);
+            // Flash-Lite: 30 RPM, 1000+ RPD. Use 25 RPM / 900 RPD for safety margin.
+            return new GeminiRateLimiter(maxCallsPerMinute: 25, maxCallsPerDay: 900);
         });
+        services.AddSingleton<GeminiCircuitBreaker>();
         services.AddScoped<GeminiAiEnrichmentService>();
         services.AddScoped<BriefingGenerationService>();
 
@@ -125,6 +127,7 @@ public static class DependencyInjection
         services.AddHangfireServer(options =>
         {
             options.Queues = ["fetch", "default", "enrichment"];
+            options.WorkerCount = Environment.ProcessorCount > 2 ? 2 : 1;
         });
 
         return services;

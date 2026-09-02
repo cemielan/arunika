@@ -80,6 +80,7 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
             }
 
             article.EnrichmentStatus = EnrichmentStatus.Completed;
+            article.EnrichmentRetryCount = 0;
             await dbContext.SaveChangesAsync(cancellationToken);
         }
         catch
@@ -96,7 +97,18 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
     {
         await dbContext.Articles
             .Where(a => a.Id == articleId)
-            .ExecuteUpdateAsync(s => s.SetProperty(a => a.EnrichmentStatus, EnrichmentStatus.Failed), cancellationToken);
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(a => a.EnrichmentStatus, EnrichmentStatus.Failed)
+                .SetProperty(a => a.EnrichmentRetryCount, a => a.EnrichmentRetryCount + 1), cancellationToken);
+    }
+
+    public async Task<int> GetEnrichmentRetryCountAsync(Guid articleId, CancellationToken cancellationToken = default)
+    {
+        var count = await dbContext.Articles
+            .Where(a => a.Id == articleId)
+            .Select(a => a.EnrichmentRetryCount)
+            .FirstOrDefaultAsync(cancellationToken);
+        return count;
     }
 
     public async Task<IReadOnlyList<Guid>> GetFailedArticleIdsAsync(int maxCount, CancellationToken cancellationToken = default)

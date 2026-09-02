@@ -24,6 +24,12 @@ public interface IArticleAnalysisRepository
     Task<IReadOnlyList<Guid>> GetFailedArticleIdsAsync(int maxCount, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the number of enrichment retry attempts for an article.
+    /// Used by <c>RetryFailedEnrichmentJob</c> to apply exponential backoff and cap retries.
+    /// </summary>
+    Task<int> GetEnrichmentRetryCountAsync(Guid articleId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Persists a daily briefing (executive summary, sentiment, risk level, and
     /// linked top-story items). Replaces any existing briefing for the same date.
     /// </summary>
