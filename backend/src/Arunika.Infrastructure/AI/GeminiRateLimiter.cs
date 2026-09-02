@@ -5,10 +5,12 @@ namespace Arunika.Infrastructure.AI;
 /// Enforces both RPM (requests per minute) and RPD (requests per day) limits.
 /// Free tier Flash-Lite: 30 RPM, 1000+ RPD. Free tier Flash: 15 RPM, 20 RPD.
 /// </summary>
-public class GeminiRateLimiter(int maxCallsPerMinute = 12, int maxCallsPerDay = 900, TimeSpan? minuteWindow = null)
+public class GeminiRateLimiter(int maxCallsPerMinute = 25, int maxCallsPerDay = 900, TimeSpan? minuteWindow = null)
 {
     private readonly TimeSpan _minuteWindow = minuteWindow ?? TimeSpan.FromMinutes(1);
     private readonly TimeSpan _dayWindow = TimeSpan.FromDays(1);
+    private readonly int _maxCallsPerMinute = maxCallsPerMinute;
+    private readonly int _maxCallsPerDay = maxCallsPerDay;
     private readonly Queue<DateTime> _minuteCalls = new();
     private readonly Queue<DateTime> _dailyCalls = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -63,8 +65,8 @@ public class GeminiRateLimiter(int maxCallsPerMinute = 12, int maxCallsPerDay = 
                     _dailyCalls.Dequeue();
                 }
 
-                bool minuteOk = _minuteCalls.Count < maxCallsPerMinute;
-                bool dailyOk = _dailyCalls.Count < maxCallsPerDay;
+                bool minuteOk = _minuteCalls.Count < _maxCallsPerMinute;
+                bool dailyOk = _dailyCalls.Count < _maxCallsPerDay;
 
                 if (minuteOk && dailyOk)
                 {
