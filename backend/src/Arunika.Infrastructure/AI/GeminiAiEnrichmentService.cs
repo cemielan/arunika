@@ -12,17 +12,20 @@ using SchemaType = Google.GenAI.Types.Type;
 namespace Arunika.Infrastructure.AI;
 
 /// <summary>
-    /// Wraps the Gemini Developer API behind <see cref="IAiEnrichmentService"/>
-    /// (design doc §5): one structured-output call per article, combining
-    /// summary, classification, sentiment, impact score, sector impact, and
-    /// keywords, instead of six separate calls.
-    /// </summary>
-    public class GeminiAiEnrichmentService(
-        IOptions<GeminiOptions> options,
-        GeminiRateLimiter rateLimiter,
-        GeminiCircuitBreaker circuitBreaker,
-        ILogger<GeminiAiEnrichmentService> logger)
-        : IAiEnrichmentService
+///     Wraps the Gemini Developer API behind <see cref="IAiEnrichmentService"/>
+///     (design doc §5): one structured-output call per article, combining
+///     summary, classification, sentiment, impact score, sector impact, and
+///     keywords, instead of six separate calls.
+///     Uses proactive model rotation every 2 articles to distribute load
+///     and avoid rate limits on free tier.
+/// </summary>
+public class GeminiAiEnrichmentService(
+    IOptions<GeminiOptions> options,
+    GeminiRateLimiter rateLimiter,
+    GeminiCircuitBreaker circuitBreaker,
+    GeminiModelRotator modelRotator,
+    ILogger<GeminiAiEnrichmentService> logger)
+    : IAiEnrichmentService
 {
     private const int MaxAttempts = 3;
     private const int MaxContentChars = 6000;
@@ -66,8 +69,8 @@ namespace Arunika.Infrastructure.AI;
             SafetySettings = SafetySettings
         };
 
-        var modelsToTry = new List<string> { options.Value.Model };
-        modelsToTry.AddRange(options.Value.FallbackModels);
+        var modelsToTry = new List<string> { modelRotator.GetNextModel() };
+        modelsToTry.AddRange(options.Value.FallbackModels.Where(m => m != modelsToTry[0]));
 
         Exception? lastException = null;
 
@@ -97,6 +100,7 @@ namespace Arunika.Infrastructure.AI;
                     var payload = JsonSerializer.Deserialize<GeminiAnalysisPayload>(text, JsonOptions)
                         ?? throw new InvalidOperationException("Gemini response could not be parsed as JSON.");
 
+                    modelRotator.RecordSuccess(model);
                     circuitBreaker.RecordSuccess(model);
                     return MapToResult(payload, model);
                 }
@@ -107,6 +111,7 @@ namespace Arunika.Infrastructure.AI;
                     if (IsQuotaExceeded(ex))
                     {
                         rateLimiter.MarkQuotaCooldown(TimeSpan.FromHours(1));
+                        modelRotator.RecordFailure(model);
                         circuitBreaker.RecordFailure(model);
                         throw new InvalidOperationException(
                             "Gemini quota exceeded; entering cooldown before the next attempt.", ex);
@@ -119,6 +124,7 @@ namespace Arunika.Infrastructure.AI;
                         logger.LogWarning(ex,
                             "Gemini enrichment failed with a non-retryable error for model {Model} and article {ArticleId}; trying next fallback.",
                             model, article.Id);
+                        modelRotator.RecordFailure(model);
                         circuitBreaker.RecordFailure(model);
                         break;
                     }
@@ -136,6 +142,7 @@ namespace Arunika.Infrastructure.AI;
                         logger.LogWarning(ex,
                             "Gemini enrichment exhausted {MaxAttempts} attempts with model {Model} for article {ArticleId}; trying next fallback.",
                             MaxAttempts, model, article.Id);
+                        modelRotator.RecordFailure(model);
                         circuitBreaker.RecordFailure(model);
                     }
                 }

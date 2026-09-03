@@ -44,6 +44,7 @@ public static class DependencyInjection
             return new GeminiRateLimiter(maxCallsPerMinute: 25, maxCallsPerDay: 900);
         });
         services.AddSingleton<GeminiCircuitBreaker>();
+        services.AddSingleton<GeminiModelRotator>();
         services.AddScoped<GeminiAiEnrichmentService>();
         services.AddScoped<BriefingGenerationService>();
 
