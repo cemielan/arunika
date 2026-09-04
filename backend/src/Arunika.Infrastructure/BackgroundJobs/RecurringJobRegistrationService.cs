@@ -15,33 +15,42 @@ public sealed class RecurringJobRegistrationService(
         {
             try
             {
-                // Fetch more frequently so feeds keep moving even if the app
-                // was asleep/restarted around a previous run window.
+                // Fetch every 30 minutes so feeds keep moving
                 recurringJobManager.AddOrUpdate<FetchNewsJob>(
                     "fetch-news",
                     job => job.RunAsync(CancellationToken.None),
                     "*/30 * * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
+
+                // Briefing every 6 hours (0, 6, 12, 18)
                 recurringJobManager.AddOrUpdate<GenerateDailyBriefingJob>(
-                    "generate-daily-briefing",
+                    "generate-briefing-6h",
                     job => job.RunAsync(CancellationToken.None),
-                    "15 8 * * *",
+                    "0 */6 * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
+
+                // Cleanup old articles at 12:20 AM
                 recurringJobManager.AddOrUpdate<CleanupOldArticlesJob>(
                     "cleanup-old-articles",
                     job => job.RunAsync(CancellationToken.None),
                     "20 0 * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
-                // Pause the automatic retry sweep while Gemini quota is unstable.
-                recurringJobManager.RemoveIfExists("retry-failed-enrichment");
+
+                // Retry failed enrichment every hour (rate limiter protects quota)
+                recurringJobManager.AddOrUpdate<RetryFailedEnrichmentJob>(
+                    "retry-failed-enrichment",
+                    job => job.RunAsync(CancellationToken.None),
+                    "0 * * * *",
+                    new RecurringJobOptions { TimeZone = JakartaTimeZone() });
+
+                // Send email digest at 9:00 AM Jakarta time
                 recurringJobManager.AddOrUpdate<SendEmailDigestJob>(
                     "send-email-digest",
                     job => job.RunAsync(CancellationToken.None),
-                    "30 8 * * *",
+                    "0 9 * * *",
                     new RecurringJobOptions { TimeZone = JakartaTimeZone() });
 
-                // Catch up immediately on startup so a just-woken instance does
-                // not wait up to 30 minutes before ingesting fresh feed items.
+                // Catch up immediately on startup
                 backgroundJobClient.Enqueue<FetchNewsJob>(job => job.RunAsync(CancellationToken.None));
 
                 logger.LogInformation("Hangfire recurring jobs registered successfully.");
