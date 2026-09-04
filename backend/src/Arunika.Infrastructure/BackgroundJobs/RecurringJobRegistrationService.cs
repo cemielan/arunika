@@ -1,3 +1,4 @@
+using Arunika.Application.Constants;
 using Hangfire;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -69,11 +70,11 @@ public sealed class RecurringJobRegistrationService(
     {
         try
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaIana);
         }
         catch (TimeZoneNotFoundException)
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaWindows);
         }
     }
 }

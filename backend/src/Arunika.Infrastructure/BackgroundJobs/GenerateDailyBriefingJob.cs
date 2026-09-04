@@ -1,3 +1,4 @@
+using Arunika.Application.Constants;
 using Arunika.Application.Services;
 using Microsoft.Extensions.Logging;
 
@@ -28,11 +29,11 @@ public class GenerateDailyBriefingJob(
     {
         try
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaIana);
         }
         catch (TimeZoneNotFoundException)
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaWindows);
         }
     }
 }
