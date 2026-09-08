@@ -398,11 +398,21 @@ MSBuild_Logs/
 # BeatPulse healthcheck temp database
 healthchecksdb
 
-# Arunika — private planning docs (kept local only, not pushed to the repo)
-/Arunika.md
-/Arunika-Application-Design.md
-/Arunika-Project-Todo-List.md
-/arunika_system_architecture.png
+# Arunika — local environment files (not pushed)
+/.env
+/.env.local
+/.env.*.local
+
+# IDE / Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.idea/
+*.swp
+*.swo
 
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
@@ -439,3 +449,23 @@ graphify-out/
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# Next.js
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Vercel
+.vercel
+
+# Test coverage
+coverage/
+*.lcov
+
+# OS
+.DS_Store
+Thumbs.db

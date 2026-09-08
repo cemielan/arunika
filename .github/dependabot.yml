@@ -1,0 +1,169 @@
+# Dependabot Configuration
+# Automated dependency updates for npm and NuGet
+
+version: 2
+updates:
+  # Backend: NuGet packages
+  - package-ecosystem: "nuget"
+    directory: "backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    labels:
+      - "backend"
+      - "dependencies"
+      - "nuget"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"
+    groups:
+      ef-core:
+        patterns:
+          - "Microsoft.EntityFrameworkCore*"
+        update-types:
+          - "minor"
+          - "patch"
+      aspnetcore:
+        patterns:
+          - "Microsoft.AspNetCore*"
+        update-types:
+          - "minor"
+          - "patch"
+      testing:
+        patterns:
+          - "xunit*"
+          - "FluentAssertions*"
+          - "Moq*"
+          - "Testcontainers*"
+        update-types:
+          - "minor"
+          - "patch"
+      hangfire:
+        patterns:
+          - "Hangfire*"
+        update-types:
+          - "minor"
+          - "patch"
+      serilog:
+        patterns:
+          - "Serilog*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Frontend: npm packages
+  - package-ecosystem: "npm"
+    directory: "frontend/arunika-dashboard"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    labels:
+      - "frontend"
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "next-*"
+          - "@next/*"
+        update-types:
+          - "minor"
+          - "patch"
+      react:
+        patterns:
+          - "react"
+          - "react-*"
+          - "@types/react*"
+        update-types:
+          - "minor"
+          - "patch"
+      tailwind:
+        patterns:
+          - "tailwindcss*"
+          - "@tailwindcss/*"
+        update-types:
+          - "minor"
+          - "patch"
+      heroui:
+        patterns:
+          - "@heroui/*"
+        update-types:
+          - "minor"
+          - "patch"
+      supabase:
+        patterns:
+          - "@supabase/*"
+        update-types:
+          - "minor"
+          - "patch"
+      framer-motion:
+        patterns:
+          - "framer-motion"
+        update-types:
+          - "minor"
+          - "patch"
+      lucide:
+        patterns:
+          - "lucide-react"
+        update-types:
+          - "minor"
+          - "patch"
+      zod:
+        patterns:
+          - "zod"
+        update-types:
+          - "minor"
+          - "patch"
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+        update-types:
+          - "minor"
+          - "patch"
+      typescript:
+        patterns:
+          - "typescript"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    labels:
+      - "ci"
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci):"
+      include: "scope"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    labels:
+      - "backend"
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"

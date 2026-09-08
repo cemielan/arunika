@@ -1,36 +1,258 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Arunika Dashboard
+
+> Next.js 16 frontend for the Arunika market intelligence platform.
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![HeroUI](https://img.shields.io/badge/HeroUI-3-purple?logo=heroui)](https://heroui.com/)
+
+---
+
+## Features
+
+- **Today's Briefing** — Daily executive summary with top stories, sentiment, risk level
+- **News Feed** — Filterable, paginated article list (category, sentiment, sector, date)
+- **Article Detail** — Full enrichment: summary, impact rationale, sector breakdown, keywords
+- **Sector Overview** — Real-time sector impact snapshot
+- **Authentication** — Register, login, forgot/reset password (JWT + refresh tokens)
+- **Dark/Light Mode** — System-aware with manual toggle
+- **Responsive / PWA-Ready** — Works on mobile, installable
+
+---
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 16 (App Router) |
+| UI Library | HeroUI v3 + Tailwind CSS 4 |
+| State/Forms | React 19, React Hook Form, Zod |
+| Auth | JWT (httpOnly cookies) + Supabase client |
+| Animations | Framer Motion |
+| Icons | Lucide React |
+| Date/Time | date-fns / native Intl |
+| Linting | ESLint 9 (Next.js config) |
+
+---
+
+## Project Structure
+
+```
+frontend/arunika-dashboard/
+├── public/                    # Static assets
+├── src/
+│   ├── app/                   # App Router pages
+│   │   ├── page.tsx           # Home → Today's Briefing
+│   │   ├── news/
+│   │   │   ├── page.tsx       # News Feed
+│   │   │   └── [id]/page.tsx  # Article Detail
+│   │   ├── sectors/page.tsx   # Sector Overview
+│   │   ├── login/page.tsx
+│   │   ├── register/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   ├── reset-password/page.tsx
+│   │   ├── verify/page.tsx
+│   │   ├── layout.tsx         # Root layout + providers
+│   │   ├── globals.css        # Tailwind + global styles
+│   │   └── loading.tsx        # Route loading UI
+│   ├── components/            # Reusable UI components
+│   │   ├── NavBar.tsx
+│   │   ├── NewsFilters.tsx
+│   │   ├── NewsPagination.tsx
+│   │   ├── MarketPulse.tsx
+│   │   ├── ThemeSwitch.tsx
+│   │   ├── Footer.tsx
+│   │   └── badges.tsx         # Sentiment/Impact/Sector badges
+│   ├── hooks/
+│   │   └── useSpringVector.ts
+│   └── lib/                   # Utilities & clients
+│       ├── api.ts             # Typed API client (fetch wrapper)
+│       ├── auth-context.tsx   # Auth state (React Context)
+│       ├── auth-validation.ts # Zod schemas for auth forms
+│       ├── formatDate.ts      # Date formatting helpers
+│       ├── newsHref.ts        # URL builders for news routes
+│       └── supabase.ts        # Supabase client (email edge functions)
+├── .env.local                 # Local env (gitignored)
+├── next.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+├── package.json
+└── README.md
+```
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+ LTS
+- npm / pnpm / yarn
+- Backend API running at `http://localhost:5097` (see root README)
+
+### Install & Run
 
 ```bash
+cd frontend/arunika-dashboard
+
+# Install dependencies
+npm install
+
+# Development server (http://localhost:3000)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Production build
+npm run build
+
+# Start production server
+npm start
+
+# Lint
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local` (copy from `.env.example` if present):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Required
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5097
 
-## Learn More
+# Optional: Supabase (for email verification / password reset)
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+```
 
-To learn more about Next.js, take a look at the following resources:
+> **Note:** The dashboard uses **server-side fetching** (Next.js Server Components / ISR) for the briefing and news feed. No CORS configuration needed on the backend — requests never run in the visitor's browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Key Implementation Details
 
-## Deploy on Vercel
+### API Client (`src/lib/api.ts`)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Typed fetch wrapper with automatic JWT handling
+- Reads access token from httpOnly cookie (set by backend)
+- Auto-refresh on 401 via `/v1/auth/refresh`
+- Centralized error handling with typed `ApiError`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Authentication (`src/lib/auth-context.tsx`)
+
+- React Context providing `user`, `login()`, `logout()`, `refresh()`
+- Token stored in memory; refresh token in httpOnly cookie
+- Hydrates on app load via `/v1/auth/me`
+
+### UI Components
+
+- **HeroUI** for accessible, styled primitives (Button, Card, Table, Modal, etc.)
+- **Tailwind CSS 4** for utility styling — no custom CSS needed
+- **Framer Motion** for page transitions and micro-interactions
+- **Lucide React** for consistent iconography
+
+### Pages Overview
+
+| Route | Description | Data Fetching |
+|-------|-------------|---------------|
+| `/` | Today's Briefing | Server Component (SSG/ISR) |
+| `/news` | Filterable News Feed | Server Component + search params |
+| `/news/[id]` | Article Detail | Server Component |
+| `/sectors` | Sector Impact | Server Component |
+| `/login` `/register` | Auth forms | Client Components |
+| `/forgot-password` `/reset-password` | Password flow | Client Components |
+
+---
+
+## Deployment (Vercel)
+
+1. Push to GitHub
+2. Import in Vercel → **Root Directory: `frontend/arunika-dashboard`**
+3. Add Environment Variable:
+   - `NEXT_PUBLIC_API_BASE_URL` → your Render backend URL
+   - (Optional) Supabase vars for auth emails
+4. Deploy — Vercel auto-detects Next.js and runs `npm run build`
+
+### Preview Deployments
+
+Every push to a branch creates a Preview Deployment on Vercel. Share the URL for review.
+
+---
+
+## Mobile / PWA
+
+### As a PWA (Recommended First Step)
+
+Add `next-pwa` for service worker + manifest:
+
+```bash
+npm install next-pwa
+```
+
+```ts
+// next.config.ts
+import withPWA from 'next-pwa'
+
+export default withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+})(nextConfig)
+```
+
+Add `public/manifest.json`:
+```json
+{
+  "name": "Arunika",
+  "short_name": "Arunika",
+  "description": "Market intelligence dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+```
+
+### As Native Apps (Capacitor)
+
+```bash
+npm install @capacitor/core @capacitor/cli
+npm install @capacitor/android @capacitor/ios
+npx cap init arunika com.arunika.app
+npx cap add android ios
+npm run build && npx cap sync
+```
+
+- Android: `npx cap open android` → Android Studio
+- iOS: `npx cap open ios` → Xcode
+
+**No separate repo needed** — Capacitor config lives in `frontend/arunika-dashboard/`.
+
+---
+
+## Scripts Reference
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm start` | Run production server |
+| `npm run lint` | Run ESLint |
+
+---
+
+## Contributing
+
+See root [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+---
+
+## License
+
+MIT — see root [LICENSE](../LICENSE).
