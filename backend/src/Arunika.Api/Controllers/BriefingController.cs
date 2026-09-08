@@ -1,5 +1,6 @@
 using Arunika.Api.Contracts;
 using Arunika.Application.Abstractions;
+using Arunika.Application.Constants;
 using Arunika.Application.Services;
 using Arunika.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -121,11 +122,11 @@ public class BriefingController(
     {
         try
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaIana);
         }
         catch (TimeZoneNotFoundException)
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaWindows);
         }
     }
 

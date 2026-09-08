@@ -17,6 +17,9 @@ public class FakeArticleAnalysisRepository : IArticleAnalysisRepository
     public Task<IReadOnlyList<Guid>> GetFailedArticleIdsAsync(int maxCount, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Not needed for Phase 6 API tests.");
 
+    public Task<int> GetEnrichmentRetryCountAsync(Guid articleId, CancellationToken cancellationToken = default)
+        => Task.FromResult(0);
+
     public Task SaveBriefingAsync(Briefing briefing, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 

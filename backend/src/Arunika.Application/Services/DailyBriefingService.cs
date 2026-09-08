@@ -1,4 +1,5 @@
 using Arunika.Application.Abstractions;
+using Arunika.Application.Constants;
 using Arunika.Domain.Entities;
 
 namespace Arunika.Application.Services;
@@ -78,11 +79,11 @@ public class DailyBriefingService(
     {
         try
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaIana);
         }
         catch (TimeZoneNotFoundException)
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaWindows);
         }
     }
 }

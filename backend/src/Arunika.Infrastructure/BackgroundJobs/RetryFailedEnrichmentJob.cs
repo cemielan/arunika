@@ -19,6 +19,7 @@ public class RetryFailedEnrichmentJob(
     ILogger<RetryFailedEnrichmentJob> logger)
 {
     private const int MaxPerSweep = 50;
+    private const int MaxRetriesPerArticle = 5;
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
@@ -33,7 +34,19 @@ public class RetryFailedEnrichmentJob(
 
         foreach (var articleId in failedIds)
         {
-            BackgroundJob.Enqueue<EnrichArticleJob>(job => job.RunAsync(articleId, CancellationToken.None));
+            var retryCount = await articleAnalysisRepository.GetEnrichmentRetryCountAsync(articleId, cancellationToken);
+            if (retryCount >= MaxRetriesPerArticle)
+            {
+                logger.LogWarning("RetryFailedEnrichmentJob: article {ArticleId} exceeded max retries ({MaxRetries}); skipping.", articleId, MaxRetriesPerArticle);
+                continue;
+            }
+
+            var delay = TimeSpan.FromMinutes(Math.Pow(2, retryCount)); // 1m, 2m, 4m, 8m, 16m
+            logger.LogInformation("RetryFailedEnrichmentJob: scheduling article {ArticleId} retry #{RetryCount} in {Delay}.", articleId, retryCount + 1, delay);
+
+            BackgroundJob.Schedule<EnrichArticleJob>(
+                job => job.RunAsync(articleId, CancellationToken.None),
+                delay);
         }
     }
 }

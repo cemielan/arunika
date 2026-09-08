@@ -1,9 +1,12 @@
+using System.Diagnostics;
 using System.Text;
 using Arunika.Application.Abstractions;
+using Arunika.Application.Constants;
 using Arunika.Domain.Entities;
 using Arunika.Infrastructure.Email;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
 
 namespace Arunika.Infrastructure.BackgroundJobs;
 
@@ -71,22 +74,36 @@ public class SendEmailDigestJob(
         var failed = 0;
         string? firstError = null;
 
+        var retryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+                onRetry: (ex, delay, attempt, ctx) =>
+                {
+                    var email = (string)ctx["email"]!;
+                    var corrId = (string)ctx["correlationId"]!;
+                    logger.LogWarning(ex, "SendEmailDigestJob: retry {Attempt}/3 for {Email} after {Delay} (correlationId: {CorrelationId}).", attempt, email, delay, corrId);
+                });
+
         foreach (var user in users)
         {
+            var correlationId = Activity.Current?.Id ?? Guid.NewGuid().ToString("N")[..12];
             try
             {
-                await emailService.SendAsync(
-                    user.Email,
-                    $"Arunika Daily Digest — {now:MMMM dd, yyyy}",
-                    digestHtml,
-                    cancellationToken);
+                await retryPolicy.ExecuteAsync(async (ctx, ct) =>
+                {
+                    await emailService.SendAsync(
+                        user.Email,
+                        $"Arunika Daily Digest — {now:MMMM dd, yyyy}",
+                        digestHtml,
+                        ct);
+                }, new Context { ["email"] = user.Email, ["correlationId"] = correlationId }, cancellationToken);
                 sent++;
             }
             catch (Exception ex)
             {
                 failed++;
                 firstError ??= $"{user.Email}: {ex.Message}";
-                logger.LogError(ex, "SendEmailDigestJob: failed to send digest to {Email}.", user.Email);
+                logger.LogError(ex, "SendEmailDigestJob: failed to send digest to {Email} (correlationId: {CorrelationId}).", user.Email, correlationId);
             }
         }
 
@@ -126,7 +143,7 @@ public class SendEmailDigestJob(
             <body>
             <h1>Arunika Daily Digest</h1>
             <p class="meta">{Date} — {Count} top stories</p>
-            <a class="cta" href="{FrontendUrl}">Open Arunika →</a>
+            <a class="cta" href="{FrontendUrl}" style="background:#1a1a1a !important; color:#fff !important; text-decoration:none;">Open Arunika →</a>
             """);
 
         if (briefing is not null)
@@ -194,11 +211,11 @@ public class SendEmailDigestJob(
         TimeZoneInfo timeZone;
         try
         {
-            timeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaIana);
         }
         catch (TimeZoneNotFoundException)
         {
-            timeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZoneConstants.JakartaWindows);
         }
 
         return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, timeZone).DateTime);
