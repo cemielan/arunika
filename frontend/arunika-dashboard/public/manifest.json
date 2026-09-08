@@ -1,0 +1,51 @@
+{
+  "name": "Arunika",
+  "short_name": "Arunika",
+  "description": "Market intelligence dashboard — structured news, sentiment, and daily briefings",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "scope": "/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business", "news"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Today's Briefing",
+      "short_name": "Briefing",
+      "description": "View today's market briefing",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "News Feed",
+      "short_name": "News",
+      "description": "Browse latest market news",
+      "url": "/news",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sector Overview",
+      "short_name": "Sectors",
+      "description": "View sector impact analysis",
+      "url": "/sectors",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
