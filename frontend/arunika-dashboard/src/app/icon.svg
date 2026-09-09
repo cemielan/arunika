@@ -2,6 +2,18 @@
   xmlns="http://www.w3.org/2000/svg"
   viewBox="0 0 64 64"
   fill="none">
+  <!--
+    Browser-tab favicon. Unlike the installed home-screen icon, a favicon can
+    follow the OS theme, so the mark is drawn black on light and white on dark —
+    the same pairing NavBar switches between. The `stroke` attribute below is
+    the light-mode value and the fallback if the stylesheet is ignored; CSS
+    overrides presentation attributes, so the dark rule wins where supported.
+  -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      path { stroke: #FFFFFF; }
+    }
+  </style>
   <path
     d="
       M32 10
@@ -16,7 +28,7 @@
       C38 27 41 30 41 34
       C41 37 39 39 36 39
     "
-    stroke="#FFFFFF"
+    stroke="black"
     stroke-width="4"
     stroke-linecap="round"
     stroke-linejoin="round"

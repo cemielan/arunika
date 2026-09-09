@@ -182,26 +182,34 @@ Every push to a branch creates a Preview Deployment on Vercel. Share the URL for
 
 ## Mobile / PWA
 
-### As a PWA (Recommended First Step)
+### As a PWA (Implemented)
 
-Add `next-pwa` for service worker + manifest:
+The dashboard already ships as an installable Progressive Web App. No extra
+dependency is involved: `next-pwa` is webpack-based and never runs under Next
+16's Turbopack builds, so the service worker is hand-written.
 
-```bash
-npm install next-pwa
-```
+| Piece | Location |
+| --- | --- |
+| Manifest (`/manifest.webmanifest`) | `src/app/manifest.ts` |
+| Service worker | `public/sw.js` |
+| Registration | `src/components/ServiceWorkerRegistrar.tsx` |
+| Install prompt (Android card / iOS instructions) | `src/components/InstallPrompt.tsx` |
+| Offline fallback | `public/offline.html` |
+| Icons (standard, maskable, Apple touch) | `public/icon-*.png`, `public/apple-touch-icon.png` — rendered from `public/logo-dark.svg` |
+| Theme-adaptive tab favicon | `src/app/icon.svg` |
 
-```ts
-// next.config.ts
-import withPWA from 'next-pwa'
+Two things to know when working on it:
 
-export default withPWA({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})(nextConfig)
-```
+- The worker only registers in production builds (`npm run build && npm start`),
+  so `next dev` is never served from a stale cache.
+- API and Supabase responses are deliberately never cached, because Cache
+  Storage is unencrypted and outlives sign-out.
+- Installed home-screen icons cannot follow the OS theme on either platform, so
+  they are fixed as the black logo on white. Only the tab favicon adapts. Regenerate
+  the PNGs from `logo-dark.svg` if the logo changes — see the guide for sizes.
 
+Install steps for Android and iOS, testing instructions, and troubleshooting are
+in [`Arunika-PWA-Guide.md`](../../Arunika-PWA-Guide.md).
 
 ### As Native Apps (Capacitor)
 
