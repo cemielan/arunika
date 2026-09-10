@@ -161,7 +161,11 @@ export default function RegisterPage() {
                 </p>
               </Modal.Body>
               <Modal.Footer className="gap-2">
-                <button type="button" className="editorial-btn-ghost" onClick={modalState.close}>
+                <button
+                  type="button"
+                  className="editorial-btn editorial-btn-ghost mr-auto text-[var(--danger)]! border-[var(--danger)]!"
+                  onClick={modalState.close}
+                >
                   Cancel
                 </button>
                 <button type="button" className="editorial-btn" disabled={loading} onClick={() => void handleAccept()}>
