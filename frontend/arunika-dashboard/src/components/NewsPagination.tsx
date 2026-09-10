@@ -1,8 +1,6 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { Pagination } from "@heroui/react";
-import {buildNewsHref, type NewsFilterParams } from "@/lib/newsHref";
+import Link from "next/link";
+import { buildNewsHref, type NewsFilterParams } from "@/lib/newsHref";
+import { Rubric } from "@/components/editorial";
 
 type NewsPaginationProps = {
   page: number;
@@ -30,6 +28,14 @@ function getPageNumbers(page: number, totalPages: number): (number | "ellipsis")
   return result;
 }
 
+/**
+ * Pager set as type rather than as a control strip: plain numerals, a rule
+ * over the whole row, and worded Previous/Next instead of chevrons.
+ *
+ * These are real links, so the pager works without JavaScript and pages can be
+ * opened in a new tab — the previous version pushed routes from click handlers
+ * on buttons, which neither middle-click nor a crawler could follow.
+ */
 export function NewsPagination({
   page,
   totalPages,
@@ -37,55 +43,72 @@ export function NewsPagination({
   pageSize,
   filters,
 }: NewsPaginationProps) {
-  const router = useRouter();
-
   if (totalPages <= 1) return null;
 
   const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
   const pageNumbers = getPageNumbers(page, totalPages);
 
-  function goTo(target: number) {
-    if (target < 1 || target > totalPages || target === page) return;
-    router.push(buildNewsHref(filters, target));
-  }
-
   return (
-    <Pagination>
-      <Pagination.Summary className="text-xs sm:text-sm">
-        <span className="hidden sm:inline">Showing </span>
-        {start}-{end}
-        <span className="hidden sm:inline"> of {totalItems} result{totalItems === 1 ? "" : "s"}</span>
-      </Pagination.Summary>
-      <Pagination.Content>
-        <Pagination.Item>
-          <Pagination.Previous isDisabled={page <= 1} onPress={() => goTo(page - 1)}>
-            <Pagination.PreviousIcon />
-            <span>Previous</span>
-          </Pagination.Previous>
-        </Pagination.Item>
+    <nav
+      aria-label="Pagination"
+      className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5"
+    >
+      <Rubric>
+        {start}–{end} of {totalItems}
+      </Rubric>
 
-        {pageNumbers.map((p, i) =>
-          p === "ellipsis" ? (
-            <Pagination.Item key={`ellipsis-${i}`}>
-              <Pagination.Ellipsis />
-            </Pagination.Item>
-          ) : (
-            <Pagination.Item key={p}>
-              <Pagination.Link isActive={p === page} onPress={() => goTo(p)}>
-                {p}
-              </Pagination.Link>
-            </Pagination.Item>
-          ),
+      <div className="flex items-center gap-4">
+        {page > 1 ? (
+          <Link
+            href={buildNewsHref(filters, page - 1)}
+            rel="prev"
+            className="editorial-rubric text-muted transition-colors hover:text-foreground"
+          >
+            Previous
+          </Link>
+        ) : (
+          <span className="editorial-rubric text-muted opacity-40">Previous</span>
         )}
 
-        <Pagination.Item>
-          <Pagination.Next isDisabled={page >= totalPages} onPress={() => goTo(page + 1)}>
-            <span>Next</span>
-            <Pagination.NextIcon />
-          </Pagination.Next>
-        </Pagination.Item>
-      </Pagination.Content>
-    </Pagination>
+        <div className="flex items-center gap-1">
+          {pageNumbers.map((p, index) =>
+            p === "ellipsis" ? (
+              <span key={`ellipsis-${index}`} className="px-1 font-mono text-xs text-muted">
+                &hellip;
+              </span>
+            ) : p === page ? (
+              <span
+                key={p}
+                aria-current="page"
+                className="border-b border-foreground px-2 py-1 font-mono text-xs tabular-nums text-foreground"
+              >
+                {p}
+              </span>
+            ) : (
+              <Link
+                key={p}
+                href={buildNewsHref(filters, p)}
+                className="border-b border-transparent px-2 py-1 font-mono text-xs tabular-nums text-muted transition-colors hover:border-border hover:text-foreground"
+              >
+                {p}
+              </Link>
+            ),
+          )}
+        </div>
+
+        {page < totalPages ? (
+          <Link
+            href={buildNewsHref(filters, page + 1)}
+            rel="next"
+            className="editorial-rubric text-muted transition-colors hover:text-foreground"
+          >
+            Next
+          </Link>
+        ) : (
+          <span className="editorial-rubric text-muted opacity-40">Next</span>
+        )}
+      </div>
+    </nav>
   );
 }

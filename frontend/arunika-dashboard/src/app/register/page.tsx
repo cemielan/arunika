@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail } from "lucide-react";
-import { Button, Card, ErrorMessage, Modal, Typography, useOverlayState } from "@heroui/react";
+import { Button, Modal, Typography, useOverlayState } from "@heroui/react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthShell, Field } from "@/components/editorial";
 import {
   hasAuthFieldErrors,
   normalizeEmail,
@@ -76,68 +76,61 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
-      <div className="text-center">
-        <Typography.Heading level={1} className="text-2xl">Create Account</Typography.Heading>
-        <Typography.Paragraph color="muted" className="mt-1">
-          Join Arunika for free.
-        </Typography.Paragraph>
-      </div>
+    <AuthShell
+      kicker="Subscribe"
+      title="Create Account"
+      lede="Join Arunika for free and get the briefing in your inbox each morning."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-accent hover:underline">
+            Sign in
+          </Link>
+          .
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <Field label="Email" error={fieldErrors.email}>
+          <input
+            type="email"
+            value={email}
+            aria-invalid={Boolean(fieldErrors.email)}
+            onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })); }}
+            onBlur={() => setFieldErrors((prev) => ({ ...prev, email: validateSignUpFields(email, password, confirmPassword).email }))}
+            className="editorial-input"
+            placeholder="you@example.com"
+          />
+        </Field>
 
-      <Card variant="default" className="p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Email</Typography.Paragraph>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })); }}
-              onBlur={() => setFieldErrors((prev) => ({ ...prev, email: validateSignUpFields(email, password, confirmPassword).email }))}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.email ? "border-danger" : "border-border"}`}
-              placeholder="you@example.com"
-            />
-            {fieldErrors.email && <ErrorMessage>{fieldErrors.email}</ErrorMessage>}
-          </div>
+        <Field label="Password" error={fieldErrors.password}>
+          <input
+            type="password"
+            value={password}
+            aria-invalid={Boolean(fieldErrors.password)}
+            onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
+            onBlur={() => setFieldErrors((prev) => ({ ...prev, password: validateSignUpFields(email, password, confirmPassword).password }))}
+            className="editorial-input"
+            placeholder="Min. 8 characters"
+          />
+        </Field>
 
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-              onBlur={() => setFieldErrors((prev) => ({ ...prev, password: validateSignUpFields(email, password, confirmPassword).password }))}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
-              placeholder="Min. 8 characters"
-            />
-            {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
-          </div>
+        <Field label="Confirm Password" error={fieldErrors.confirmPassword}>
+          <input
+            type="password"
+            value={confirmPassword}
+            aria-invalid={Boolean(fieldErrors.confirmPassword)}
+            onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
+            onBlur={() => setFieldErrors((prev) => ({ ...prev, confirmPassword: validateSignUpFields(email, password, confirmPassword).confirmPassword }))}
+            className="editorial-input"
+            placeholder="Repeat your password"
+          />
+        </Field>
 
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Confirm Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
-              onBlur={() => setFieldErrors((prev) => ({ ...prev, confirmPassword: validateSignUpFields(email, password, confirmPassword).confirmPassword }))}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
-              placeholder="Repeat your password"
-            />
-            {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
-          </div>
-
-          <Button type="submit" variant="primary" isDisabled={loading}>
-            {loading ? "Creating account..." : "Create Account"}
-          </Button>
-        </form>
-      </Card>
-
-      <Typography.Paragraph size="sm" color="muted" className="text-center">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-accent hover:underline">
-          Sign in
-        </Link>
-        .
-      </Typography.Paragraph>
+        <button type="submit" className="editorial-btn w-full" disabled={loading}>
+          {loading ? "Creating account…" : "Create Account"}
+        </button>
+      </form>
 
       {signupOutcome && (
         <Modal state={modalState}>
@@ -145,10 +138,9 @@ export default function RegisterPage() {
           <Modal.Container size="sm">
             <Modal.Dialog>
               <Modal.Header>
-                <Modal.Icon className="text-accent">
-                  <Mail className="h-5 w-5" />
-                </Modal.Icon>
-                <Modal.Heading className="text-lg">Daily email summary</Modal.Heading>
+                <Modal.Heading className="editorial-display text-xl">
+                  Daily email summary
+                </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <Typography.Paragraph size="sm" className="leading-relaxed">
@@ -168,6 +160,6 @@ export default function RegisterPage() {
           </Modal.Container>
         </Modal>
       )}
-    </div>
+    </AuthShell>
   );
 }

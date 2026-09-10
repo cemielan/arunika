@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { getBriefing } from "@/lib/api";
 import { formatDateOnly } from "@/lib/formatDate";
 import { MarketPulse } from "@/components/MarketPulse";
 import { StoryColumn, StoryLead, StoryRow } from "@/components/BriefingStories";
+import { PageHeader, Rubric, SectionRule } from "@/components/editorial";
 
 /**
  * The briefing reads as a newsletter issue rather than a dashboard list: a
@@ -37,15 +37,6 @@ function formatMastheadDate(dateOnly: string): string {
   });
 }
 
-function SectionRule({ label, note }: { label: string; note?: string }) {
-  return (
-    <div className="editorial-rule">
-      <h2 className="editorial-rubric text-foreground">{label}</h2>
-      {note && <span className="editorial-rubric hidden text-muted sm:inline">{note}</span>}
-    </div>
-  );
-}
-
 export default async function Home() {
   const briefing = await getBriefing();
   const { marketPulse, topStories } = briefing;
@@ -61,51 +52,32 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
-      <header className="editorial-reveal flex flex-col gap-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <p className="editorial-rubric text-muted">
-            {formatMastheadDate(briefing.date) || "Today"}
-          </p>
-          <p className="editorial-rubric text-muted">
-            {marketPulse.totalArticles} stories &middot; {windowNote}
-          </p>
-        </div>
-
-        <div className="editorial-rule-strong" />
-
-        <div>
-          <h1 className="editorial-display text-4xl text-foreground sm:text-6xl">
-            Today&apos;s Briefing
-          </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-            The week&apos;s market-moving stories, read and ranked by impact score.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        kicker={formatMastheadDate(briefing.date) || "Today"}
+        meta={`${marketPulse.totalArticles} stories · ${windowNote}`}
+        title="Today's Briefing"
+        lede="The week's market-moving stories, read and ranked by impact score."
+      />
 
       {(briefing.executiveSummary || marketPulse.totalArticles > 0) && (
         <section className="editorial-reveal grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
           {briefing.executiveSummary ? (
             <div className="flex flex-col gap-4">
-              <div className="editorial-rule">
-                <span className="editorial-rubric text-foreground">The lede</span>
-                <span className="editorial-rubric text-muted">AI-generated</span>
-              </div>
+              <SectionRule label="The lede" note="AI-generated" />
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 {briefing.overallSentiment && (
-                  <span className="editorial-rubric text-muted">
-                    Outlook{" "}
-                    <span className="text-foreground">{briefing.overallSentiment}</span>
-                  </span>
+                  <Rubric>
+                    Outlook <span className="text-foreground">{briefing.overallSentiment}</span>
+                  </Rubric>
                 )}
                 {briefing.riskLevel && (
-                  <span className="editorial-rubric text-muted">
+                  <Rubric>
                     Risk{" "}
                     <span className={RISK_TONE[briefing.riskLevel] ?? "text-foreground"}>
                       {briefing.riskLevel}
                     </span>
-                  </span>
+                  </Rubric>
                 )}
               </div>
 
@@ -169,8 +141,8 @@ export default async function Home() {
       <footer className="editorial-reveal flex flex-col gap-4 pb-2">
         <div className="editorial-rule-strong" />
         <Link href="/news" className="group inline-flex items-center gap-2 self-start text-accent">
-          <span className="editorial-rubric">Browse the full news feed</span>
-          <ArrowRight className="editorial-arrow size-4" />
+          <Rubric className="text-accent!">Browse the full news feed</Rubric>
+          <span className="editorial-arrow inline-block leading-none">&rarr;</span>
         </Link>
       </footer>
     </div>

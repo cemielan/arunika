@@ -1,100 +1,19 @@
 import Link from "next/link";
-import { ArrowRight, Plus } from "lucide-react";
 import type { TopStory } from "@/lib/api";
-import { formatDate, formatDateShort } from "@/lib/formatDate";
-import { SENTIMENT_META } from "@/components/badges";
+import {
+  Dateline,
+  ImpactMeter,
+  Ordinal,
+  Rubric,
+  SentimentMark,
+} from "@/components/editorial";
 
 /**
- * Story presentation for the briefing page's newsletter layout. Three
- * treatments share one visual language and descend in prominence: the lead
- * story runs full width, stories two-to-four run as a column grid, and the
- * remainder run as a compact ranked list.
+ * Story presentation for the briefing page. Three treatments share one visual
+ * language and descend in prominence: the lead story runs full width, stories
+ * two-to-four run as a column grid, and the remainder run as a compact ranked
+ * list.
  */
-
-/** Ranked position, set in the display face — "01", "02", … */
-function Ordinal({ index, className = "" }: { index: number; className?: string }) {
-  return (
-    <span className={`editorial-display tabular-nums text-muted ${className}`} aria-hidden>
-      {String(index + 1).padStart(2, "0")}
-    </span>
-  );
-}
-
-/**
- * Magnitude mark for a single value: one hue, thin, rounded, and always shown
- * next to its own number so the score is never carried by the bar alone.
- */
-function ImpactMeter({ score, className = "" }: { score: number; className?: string }) {
-  const clamped = Math.max(0, Math.min(100, score));
-
-  return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <span className="editorial-rubric text-muted">Impact</span>
-      <div className="h-0.75 w-12 overflow-hidden rounded-full bg-surface-secondary sm:w-16" aria-hidden>
-        <div className="h-full rounded-full bg-accent" style={{ width: `${clamped}%` }} />
-      </div>
-      <span className="font-mono text-xs tabular-nums text-foreground">{clamped}</span>
-    </div>
-  );
-}
-
-/** Sentiment as icon + word. Colour alone would not survive a colourblind reader. */
-function SentimentMark({ sentiment }: { sentiment: string | null }) {
-  if (sentiment !== "Bullish" && sentiment !== "Bearish" && sentiment !== "Neutral") {
-    return null;
-  }
-
-  const meta = SENTIMENT_META[sentiment];
-  const { Icon } = meta;
-  const tone =
-    meta.color === "success" ? "text-success" : meta.color === "danger" ? "text-danger" : "text-muted";
-
-  return (
-    <span className={`inline-flex items-center gap-1 ${tone}`}>
-      <Icon className="size-3.5" />
-      <span className="editorial-rubric">{meta.label}</span>
-    </span>
-  );
-}
-
-/**
- * Source · timestamp · category dateline. The lead story gets the full,
- * unambiguous timestamp; narrower treatments get the compact form so the line
- * does not wrap.
- */
-function Dateline({
-  story,
-  variant = "short",
-  className = "",
-}: {
-  story: TopStory;
-  variant?: "full" | "short";
-  className?: string;
-}) {
-  const timestamp = story.publishedAt
-    ? variant === "full"
-      ? formatDate(story.publishedAt)
-      : formatDateShort(story.publishedAt)
-    : null;
-
-  const parts = [story.source, timestamp, variant === "full" ? story.category : null]
-    .filter((part): part is string => Boolean(part));
-
-  if (parts.length === 0) {
-    return null;
-  }
-
-  return (
-    <p className={`editorial-rubric text-muted ${className}`}>
-      {parts.map((part, index) => (
-        <span key={part}>
-          {index > 0 && <span className="mx-1.5 opacity-50">&middot;</span>}
-          {part}
-        </span>
-      ))}
-    </p>
-  );
-}
 
 /** Native-disclosure "Why it matters", carrying the AI impact rationale. */
 function WhyItMatters({ rationale }: { rationale: string | null }) {
@@ -103,15 +22,25 @@ function WhyItMatters({ rationale }: { rationale: string | null }) {
   }
 
   return (
-    <details className="editorial-disclosure group/why mt-3">
+    <details className="editorial-disclosure mt-3">
       <summary className="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-foreground">
-        <Plus className="editorial-disclosure-sign size-3" />
-        <span className="editorial-rubric">Why it matters</span>
+        <span className="editorial-disclosure-sign inline-block leading-none">+</span>
+        <Rubric>Why it matters</Rubric>
       </summary>
       <p className="mt-2 border-l border-border pl-3 text-sm leading-relaxed text-muted">
         {rationale}
       </p>
     </details>
+  );
+}
+
+/** Text affordance replacing the old arrow glyph. */
+function ReadCue({ label = "Read the story" }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-accent">
+      <Rubric className="text-accent!">{label}</Rubric>
+      <span className="editorial-arrow inline-block leading-none">&rarr;</span>
+    </span>
   );
 }
 
@@ -133,7 +62,13 @@ export function StoryLead({ story }: { story: TopStory }) {
             </h3>
           </Link>
 
-          <Dateline story={story} variant="full" className="mt-3" />
+          <Dateline
+            source={story.source}
+            publishedAt={story.publishedAt}
+            category={story.category}
+            variant="full"
+            className="mt-3"
+          />
 
           {story.summary && (
             <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
@@ -147,16 +82,10 @@ export function StoryLead({ story }: { story: TopStory }) {
             <ImpactMeter score={story.impactScore} />
             <SentimentMark sentiment={story.sentiment} />
             {story.sectors.slice(0, 3).map((sector) => (
-              <span key={sector} className="editorial-rubric text-muted">
-                {sector}
-              </span>
+              <Rubric key={sector}>{sector}</Rubric>
             ))}
-            <Link
-              href={`/news/${story.articleId}`}
-              className="group ml-auto inline-flex items-center gap-1.5 text-accent"
-            >
-              <span className="editorial-rubric">Read the story</span>
-              <ArrowRight className="editorial-arrow size-3.5" />
+            <Link href={`/news/${story.articleId}`} className="group ml-auto">
+              <ReadCue />
             </Link>
           </div>
         </div>
@@ -174,7 +103,11 @@ export function StoryColumn({ story, index }: { story: TopStory; index: number }
     >
       <div className="flex items-baseline gap-3">
         <Ordinal index={index} className="text-lg" />
-        <Dateline story={story} className="min-w-0 flex-1" />
+        <Dateline
+          source={story.source}
+          publishedAt={story.publishedAt}
+          className="min-w-0 flex-1"
+        />
       </div>
 
       <Link href={`/news/${story.articleId}`} className="group mt-2 block">
@@ -217,7 +150,7 @@ export function StoryRow({ story, index }: { story: TopStory; index: number }) {
             <span className="editorial-link-underline">{story.title}</span>
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Dateline story={story} />
+            <Dateline source={story.source} publishedAt={story.publishedAt} />
             <SentimentMark sentiment={story.sentiment} />
           </div>
         </div>

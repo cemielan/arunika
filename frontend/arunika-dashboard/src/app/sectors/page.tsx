@@ -1,68 +1,97 @@
 export const dynamic = "force-dynamic";
 
-import { Card, Typography } from "@heroui/react";
-import { getSectors } from "@/lib/api";
+import { getSectors, type SectorAggregation } from "@/lib/api";
+import {
+  ImpactMeter,
+  PageHeader,
+  Rubric,
+  SectionRule,
+  SentimentMark,
+} from "@/components/editorial";
 
-function sentimentColor(sentiment: string): string {
-  switch (sentiment) {
-    case "Bullish": return "text-green-600";
-    case "Bearish": return "text-red-600";
-    default: return "text-muted";
-  }
+/**
+ * Sector board. Each sector is a bordered column rather than a rounded card,
+ * with the average impact set in the display face so the page scans as a table
+ * of figures — the sentiment split is spelled out in words and counts instead
+ * of the arrow emoji it used to carry.
+ */
+function SectorEntry({ sector, index }: { sector: SectorAggregation; index: number }) {
+  const splits: { key: "Bullish" | "Neutral" | "Bearish"; count: number }[] = [
+    { key: "Bullish", count: sector.bullishCount },
+    { key: "Neutral", count: sector.neutralCount },
+    { key: "Bearish", count: sector.bearishCount },
+  ];
+
+  return (
+    <article
+      className="editorial-reveal flex h-full flex-col gap-4 border-t-2 border-foreground/85 pt-4"
+      style={{ animationDelay: `${60 + index * 45}ms` }}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="editorial-display text-xl text-foreground">{sector.sector}</h3>
+        <SentimentMark sentiment={sector.dominantSentiment} />
+      </div>
+
+      <div className="flex items-baseline gap-2">
+        <span className="editorial-display text-4xl tabular-nums text-foreground">
+          {sector.averageImpactScore}
+        </span>
+        <Rubric>Avg. impact</Rubric>
+      </div>
+
+      {/* Bare: the score is already set as the hero number directly above. */}
+      <ImpactMeter score={sector.averageImpactScore} variant="bare" />
+
+      <dl className="mt-auto flex flex-col gap-1.5 border-t border-border pt-3">
+        {splits.map((split) => (
+          <div key={split.key} className="flex items-center gap-2 text-sm">
+            <dt>
+              <SentimentMark sentiment={split.key} />
+            </dt>
+            <dd className="ml-auto font-mono text-xs tabular-nums text-foreground">
+              {split.count}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <Rubric>
+        {sector.articleCount} article{sector.articleCount === 1 ? "" : "s"}
+      </Rubric>
+    </article>
+  );
 }
 
 export default async function SectorsPage() {
   const sectors = await getSectors();
+  const totalArticles = sectors.reduce((sum, sector) => sum + sector.articleCount, 0);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Typography.Heading level={1} className="text-2xl sm:text-3xl">
-          Sector Analysis
-        </Typography.Heading>
-        <Typography.Paragraph color="muted" className="mt-1">
-          Sentiment and impact aggregated by sector over the last 7 days.
-        </Typography.Paragraph>
-      </div>
+    <div className="flex flex-col gap-10 sm:gap-12">
+      <PageHeader
+        kicker="Last 7 days"
+        meta={sectors.length > 0 ? `${sectors.length} sectors · ${totalArticles} articles` : undefined}
+        title="Sector Analysis"
+        lede="Sentiment and impact aggregated by sector, across every enriched story in the window."
+      />
 
-      {sectors.length === 0 ? (
-        <Card variant="transparent" className="items-center border border-dashed border-border text-center p-8">
-          <Typography.Paragraph color="muted">
-            No sector data yet. Check back once articles have been enriched.
-          </Typography.Paragraph>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sectors.map((s) => (
-            <Card key={s.sector} variant="default" className="flex-col gap-3 p-4">
-              <div className="flex items-center justify-between">
-                <Typography.Paragraph weight="medium" className="text-sm">
-                  {s.sector}
-                </Typography.Paragraph>
-                <Typography.Paragraph size="sm" className={sentimentColor(s.dominantSentiment)}>
-                  {s.dominantSentiment}
-                </Typography.Paragraph>
-              </div>
-              <div className="flex items-baseline gap-1">
-                <Typography.Paragraph className="text-2xl font-bold">
-                  {s.averageImpactScore}
-                </Typography.Paragraph>
-                <Typography.Paragraph size="sm" color="muted">
-                  avg impact
-                </Typography.Paragraph>
-              </div>
-              <div className="flex gap-3 text-xs text-muted">
-                <span>📈 {s.bullishCount}</span>
-                <span>📉 {s.bearishCount}</span>
-                <span>➖ {s.neutralCount}</span>
-              </div>
-              <Typography.Paragraph size="xs" color="muted">
-                {s.articleCount} article{s.articleCount === 1 ? "" : "s"}
-              </Typography.Paragraph>
-            </Card>
-          ))}
-        </div>
-      )}
+      <section className="flex flex-col gap-6">
+        <SectionRule label="By average impact" />
+
+        {sectors.length === 0 ? (
+          <div className="editorial-panel p-8 text-center">
+            <p className="text-sm text-muted">
+              No sector data yet. Check back once articles have been enriched.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
+            {sectors.map((sector, index) => (
+              <SectorEntry key={sector.sector} sector={sector} index={index} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

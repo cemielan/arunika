@@ -33,6 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Headlines use a Playfair Display display face; body copy stays on Geist.
   Hover states, the staggered entrance and the "Why it matters" disclosures are
   CSS and native `<details>`, so the page remains a server component.
+- The editorial layout now runs across the whole app — news feed, article
+  detail, sector analysis, the nav bar, footer, install prompt and every auth
+  screen (sign in, sign up, forgot/reset password, verify) — from one shared
+  set of primitives in `src/components/editorial.tsx` and an `.editorial-*`
+  layer in `globals.css`
+- Decorative iconography removed throughout: nav-tab icons, category filter
+  pills, sector emoji, form and modal glyphs, the sun/moon theme toggle and the
+  pagination chevrons are now words or typographic rules. The only marks kept
+  are the three sentiment arrows, which encode data and always sit beside their
+  own label
+- Nav bar active state is a rule that slides between small-caps labels instead
+  of a filled pill; the theme control is a word ("Light" / "Dark")
+- News feed pagination is now real `<a>` links, so pages can be opened in a new
+  tab and followed without JavaScript
 - Gemini free-tier budget is now tracked per model (RPM *and* RPD) from
   `Gemini:ModelQuotas`, derated by `Gemini:QuotaSafetyPercent`, instead of a
   single shared counter

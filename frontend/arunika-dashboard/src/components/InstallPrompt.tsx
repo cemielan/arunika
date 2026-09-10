@@ -1,8 +1,6 @@
 "use client";
 
 import { startTransition, useCallback, useEffect, useState } from "react";
-import { Button } from "@heroui/react";
-import { Download, Share, SquarePlus, X } from "lucide-react";
 
 // Chromium-only, so it is absent from the DOM lib.
 interface BeforeInstallPromptEvent extends Event {
@@ -89,34 +87,29 @@ export function InstallPrompt() {
   if (!installEvent && !showIosHint) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-xl border border-border bg-surface p-4 shadow-lg sm:bottom-6 sm:left-6">
+    <div className="editorial-panel fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)] max-w-sm bg-surface p-4 shadow-lg sm:bottom-6 sm:left-6">
       <button
         onClick={dismiss}
-        aria-label="Dismiss install prompt"
-        className="absolute right-2 top-2 text-muted hover:text-foreground"
+        className="editorial-rubric absolute right-3 top-3 text-muted transition-colors hover:text-foreground"
       >
-        <X size={16} />
+        Dismiss
       </button>
 
-      <p className="pr-6 text-sm font-semibold">Install Arunika</p>
+      <p className="editorial-display pr-16 text-lg text-foreground">Install Arunika</p>
 
       {installEvent ? (
         <>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-2 text-sm leading-relaxed text-muted">
             Add Arunika to your home screen for full-screen access and offline reading.
           </p>
-          <Button variant="primary" size="sm" className="mt-3 gap-1.5!" onPress={() => void install()}>
-            <Download size={16} />
+          <button type="button" className="editorial-btn mt-4" onClick={() => void install()}>
             Install app
-          </Button>
+          </button>
         </>
       ) : (
-        <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-muted">
-          Tap
-          <Share size={16} aria-label="Share" className="inline shrink-0" />
-          in Safari&rsquo;s toolbar, then
-          <SquarePlus size={16} aria-hidden="true" className="inline shrink-0" />
-          <span className="font-medium text-foreground">Add to Home Screen</span>.
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Tap <span className="font-medium text-foreground">Share</span> in Safari&rsquo;s toolbar,
+          then <span className="font-medium text-foreground">Add to Home Screen</span>.
         </p>
       )}
     </div>

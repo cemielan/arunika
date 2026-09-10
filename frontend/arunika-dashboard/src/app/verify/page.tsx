@@ -3,14 +3,20 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { upsertMe } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { AuthShell } from "@/components/editorial";
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<div className="mx-auto mt-16 text-center text-muted">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="mx-auto mt-16 text-center">
+          <span className="editorial-rubric text-muted">Loading</span>
+        </div>
+      }
+    >
       <VerifyForm />
     </Suspense>
   );
@@ -123,29 +129,38 @@ function VerifyForm() {
   };
 
   return (
-    <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
-      <div className="text-center">
-        <Typography.Heading level={1} className="text-2xl">Confirm your email</Typography.Heading>
-        <Typography.Paragraph color="muted" className="mt-1">
-          We sent a confirmation email to <strong>{email}</strong>. Open it and click the{" "}
-          <strong>Confirm email</strong> button inside.
-        </Typography.Paragraph>
-      </div>
-
-      <Card variant="default" className="p-6 text-center">
-        <Typography.Paragraph size="sm" color="muted">
+    <AuthShell
+      kicker="One more step"
+      title="Confirm your email"
+      lede={
+        <>
+          We sent a confirmation email to{" "}
+          <strong className="text-foreground">{email}</strong>. Open it and click the{" "}
+          <strong className="text-foreground">Confirm email</strong> button inside.
+        </>
+      }
+      footer={
+        <Link href="/login" className="font-medium text-accent hover:underline">
+          Back to sign in
+        </Link>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        <p className="text-sm leading-relaxed text-muted">
           No email? Check your spam folder, then resend it below.
-        </Typography.Paragraph>
-        <div className="mt-4 flex w-full flex-col items-center gap-3">
-          <Button variant="primary" onPress={handleResend} isDisabled={resending} className="w-full max-w-xs">
-            {resending ? "Sending..." : "Resend confirmation email"}
-          </Button>
-          <Link href="/login" className="text-sm font-medium text-accent hover:underline">
-            Back to sign in
-          </Link>
-        </div>
-        {linkError && <div className="mt-4"><ErrorMessage>{linkError}</ErrorMessage></div>}
-      </Card>
-    </div>
+        </p>
+
+        <button
+          type="button"
+          onClick={handleResend}
+          className="editorial-btn w-full"
+          disabled={resending}
+        >
+          {resending ? "Sending…" : "Resend confirmation email"}
+        </button>
+
+        {linkError && <p className="text-xs leading-relaxed text-danger">{linkError}</p>}
+      </div>
+    </AuthShell>
   );
 }

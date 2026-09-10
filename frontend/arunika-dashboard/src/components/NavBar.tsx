@@ -2,20 +2,25 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@heroui/react";
-import { LogIn, LogOut, Menu, Newspaper, Sparkles, User, X } from "lucide-react";
-import Image from "next/image";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { useSpringVector } from "@/app/hooks/useSpringVector";
 import { useAuth } from "@/lib/auth-context";
 
 const NAV_LINKS = [
-  { href: "/", label: "Briefing", icon: Sparkles },
-  { href: "/news", label: "News Feed", icon: Newspaper },
-  { href: "/sectors", label: "Sectors", icon: User },
+  { href: "/", label: "Briefing" },
+  { href: "/news", label: "News Feed" },
+  { href: "/sectors", label: "Sectors" },
 ];
 
+/**
+ * Masthead bar. Navigation is set in the same small-caps rubric as the section
+ * rules below it, and the active item is marked by a rule that slides between
+ * labels — the pill-and-icon treatment it replaces read as a generic app
+ * shell rather than as the top of a publication.
+ */
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -25,11 +30,16 @@ export function NavBar() {
   const activeIndex = NAV_LINKS.findIndex(({ href }) =>
     href === "/" ? pathname === "/" : pathname?.startsWith(href),
   );
+  // On pages outside the three sections (auth, verify) nothing is marked
+  // active. The rule still needs somewhere to sit, so it measures the first
+  // link but stays hidden.
+  const isNavPage = activeIndex !== -1;
   const activeHref = NAV_LINKS[activeIndex]?.href ?? NAV_LINKS[0].href;
+  const isActiveLink = (href: string) => isNavPage && href === activeHref;
 
   const trackRef = useRef<HTMLElement>(null);
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
-  const [pillTarget, setPillTarget] = useState({ left: 0, width: 0 });
+  const [ruleTarget, setRuleTarget] = useState({ left: 0, width: 0 });
 
   useLayoutEffect(() => {
     if (window.innerWidth < 768) return;
@@ -38,13 +48,12 @@ export function NavBar() {
     if (track && activeEl) {
       const trackRect = track.getBoundingClientRect();
       const elRect = activeEl.getBoundingClientRect();
-      setPillTarget({ left: elRect.left - trackRect.left, width: elRect.width });
+      setRuleTarget({ left: elRect.left - trackRect.left, width: elRect.width });
     }
   }, [activeHref]);
 
-  const { values, velocities } = useSpringVector([pillTarget.left, pillTarget.width]);
+  const { values } = useSpringVector([ruleTarget.left, ruleTarget.width]);
   const [animLeft, animWidth] = values;
-  const stretch = Math.min(Math.abs(velocities[0]) / 900, 0.12);
 
   const handleLogout = async () => {
     await signOut();
@@ -55,49 +64,44 @@ export function NavBar() {
 
   return (
     <header
-      className="sticky top-0 z-40 border-b border-border bg-background/80 
-      backdrop-blur transition-[background-color,border-color] duration-120 ease-linear 
+      className="sticky top-0 z-40 border-b border-border bg-background/80
+      backdrop-blur transition-[background-color,border-color] duration-120 ease-linear
       supports-backdrop-filter:bg-background/60"
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 sm:gap-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Image
             src="/logo-dark.svg"
-            alt="Arunika"
-            width={32}
-            height={32}
-            className="block dark:hidden sm:w-9 sm:h-9"
+            alt=""
+            width={30}
+            height={30}
+            className="block dark:hidden"
             priority
           />
           <Image
             src="/logo-light.svg"
-            alt="Arunika"
-            width={32}
-            height={32}
-            className="hidden dark:block sm:w-9 sm:h-9"
+            alt=""
+            width={30}
+            height={30}
+            className="hidden dark:block"
             priority
           />
-          <span className="text-lg font-semibold tracking-tight sm:text-xl">
+          <span className="editorial-display text-xl leading-none text-foreground sm:text-2xl">
             Arunika.
           </span>
         </Link>
 
         {/* Desktop nav */}
-        <nav
-          ref={trackRef}
-          className="relative hidden items-center gap-1 rounded-full bg-surface-secondary p-1 md:flex"
-        >
-          <span
-            aria-hidden
-            className="absolute inset-y-1 rounded-full bg-surface shadow-surface will-change-transform"
-            style={{
-              left: animLeft,
-              width: animWidth,
-              transform: `scaleX(${1 + stretch})`,
-            }}
-          />
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
-            const isActive = href === activeHref;
+        <nav ref={trackRef} className="relative hidden items-center gap-7 self-stretch md:flex">
+          {isNavPage && (
+            <span
+              aria-hidden
+              className="absolute bottom-1 h-px bg-foreground will-change-transform"
+              style={{ left: animLeft, width: animWidth }}
+            />
+          )}
+          {NAV_LINKS.map(({ href, label }) => {
+            const isActive = isActiveLink(href);
             return (
               <Link
                 key={href}
@@ -105,12 +109,12 @@ export function NavBar() {
                 ref={(el) => {
                   linkRefs.current[href] = el;
                 }}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "relative z-10 flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors duration-200 lg:px-3",
+                  "editorial-rubric flex items-center transition-colors duration-200",
                   isActive ? "text-foreground" : "text-muted hover:text-foreground",
                 )}
               >
-                <Icon className="size-3.5" />
                 {label}
               </Link>
             );
@@ -118,76 +122,71 @@ export function NavBar() {
         </nav>
 
         {/* Desktop right section */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden shrink-0 items-center gap-5 md:flex">
           {!ready ? null : isAuthenticated ? (
             <>
-              <span className="hidden items-center gap-1.5 text-sm text-muted lg:flex">
-                <User className="size-3.5" />
-                <span className="max-w-28 truncate">{user?.email}</span>
+              <span className="editorial-rubric hidden max-w-36 truncate text-muted lg:block">
+                {user?.email}
               </span>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+                className="editorial-rubric text-muted transition-colors hover:text-foreground"
               >
-                <LogOut className="size-3.5" />
                 Logout
               </button>
             </>
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+              className="editorial-rubric text-muted transition-colors hover:text-foreground"
             >
-              <LogIn className="size-3.5" />
               Sign In
             </Link>
           )}
           <ThemeSwitch />
         </div>
 
-        {/* Mobile hamburger */}
+        {/* Mobile toggle */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="flex items-center md:hidden"
-          aria-label="Toggle menu"
+          className="editorial-rubric text-muted transition-colors hover:text-foreground md:hidden"
+          aria-expanded={menuOpen}
         >
-          {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          {menuOpen ? "Close" : "Menu"}
         </button>
       </div>
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="border-t border-border px-4 pb-4 pt-2 md:hidden">
-          <div className="flex flex-col gap-2">
-            {NAV_LINKS.map(({ href, label, icon: Icon }) => {
-              const isActive = href === activeHref;
+        <div className="border-t border-border px-4 pb-4 pt-1 md:hidden">
+          <nav className="flex flex-col">
+            {NAV_LINKS.map(({ href, label }) => {
+              const isActive = isActiveLink(href);
               return (
                 <Link
                   key={href}
                   href={href}
                   onClick={() => setMenuOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive ? "bg-surface-secondary text-foreground" : "text-muted hover:text-foreground",
+                    "editorial-rubric border-b border-border py-3 transition-colors",
+                    isActive ? "text-foreground" : "text-muted hover:text-foreground",
                   )}
                 >
-                  <Icon className="size-4" />
                   {label}
                 </Link>
               );
             })}
-            <hr className="border-border" />
+          </nav>
+
+          <div className="flex flex-col gap-3 pt-4">
             {!ready ? null : isAuthenticated ? (
               <>
-                <span className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
-                  <User className="size-4" />
-                  {user?.email}
-                </span>
+                <span className="editorial-rubric truncate text-muted">{user?.email}</span>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+                  className="editorial-rubric self-start text-muted transition-colors hover:text-foreground"
                 >
-                  <LogOut className="size-4" />
                   Logout
                 </button>
               </>
@@ -195,16 +194,12 @@ export function NavBar() {
               <Link
                 href="/login"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+                className="editorial-rubric self-start text-muted transition-colors hover:text-foreground"
               >
-                <LogIn className="size-4" />
                 Sign In
               </Link>
             )}
-            <div className="flex items-center gap-2 px-3 py-2">
-              <span className="text-sm text-muted">Theme</span>
-              <ThemeSwitch />
-            </div>
+            <ThemeSwitch className="self-start" />
           </div>
         </div>
       )}

@@ -2,47 +2,16 @@
 
 import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Button,
-  Popover,
-  RangeCalendar,
-  Tag,
-  TagGroup,
-  Typography,
-  cn,
-} from "@heroui/react";
-import type { Selection } from "react-aria-components";
+import { Button, Popover, RangeCalendar, Typography, cn } from "@heroui/react";
 import {
   CalendarDate,
   getLocalTimeZone,
   parseDate,
   today,
 } from "@internationalized/date";
-import {
-  Bitcoin,
-  CalendarRange,
-  Cpu,
-  Landmark,
-  LineChart,
-  Newspaper,
-  Package,
-  TrendingUp,
-  Vote,
-  X,
-} from "lucide-react";
 import { CATEGORIES } from "@/lib/api";
 import { formatDateOnly } from "@/lib/formatDate";
 import { useSpringVector } from "@/app/hooks/useSpringVector";
-
-const CATEGORY_ICONS: Record<string, typeof Newspaper> = {
-  Politics: Vote,
-  Economy: LineChart,
-  Markets: TrendingUp,
-  Banking: Landmark,
-  Technology: Cpu,
-  Commodities: Package,
-  Crypto: Bitcoin,
-};
 
 type NewsFiltersProps = {
   category?: string;
@@ -56,10 +25,15 @@ type NextParams = Partial<
   Pick<NewsFiltersProps, "category" | "search" | "from" | "to" | "sortBy">
 >;
 
-/** Client-side filter bar for the news feed: full-text search, category (HeroUI
- * TagGroup), sort order (spring-driven sliding toggle), and a published-date
- * range (HeroUI RangeCalendar in a popover). Every change updates the URL's
- * search params so the server component re-fetches with the new filter. */
+/**
+ * Client-side filter bar for the news feed: full-text search, category, sort
+ * order and a published-date range. Every change updates the URL's search
+ * params so the server component re-fetches with the new filter.
+ *
+ * The category row is plain typographic tags rather than icon pills — a row of
+ * small pictograms was the loudest "generated template" signal on this page,
+ * and the category names read faster without them.
+ */
 export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -117,9 +91,8 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
     }
   }, [isImpact]);
 
-  const { values, velocities } = useSpringVector([pillTarget.left, pillTarget.width]);
+  const { values } = useSpringVector([pillTarget.left, pillTarget.width]);
   const [animLeft, animWidth] = values;
-  const stretch = Math.min(Math.abs(velocities[0]) / 900, 0.12);
 
   function navigate(next: NextParams) {
     const merged = { category, search, from, to, sortBy, ...next };
@@ -128,18 +101,9 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
     if (merged.search) params.set("search", merged.search);
     if (merged.from) params.set("from", merged.from);
     if (merged.to) params.set("to", merged.to);
-    if (merged.sortBy && merged.sortBy !== "date")
-      params.set("sortBy", merged.sortBy);
+    if (merged.sortBy && merged.sortBy !== "date") params.set("sortBy", merged.sortBy);
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
-  }
-
-  function handleCategorySelectionChange(keys: Selection) {
-    if (keys === "all") {
-      return;
-    }
-    const [key] = Array.from(keys);
-    navigate({ category: key && key !== "all" ? String(key) : undefined });
   }
 
   function applyRange() {
@@ -154,80 +118,60 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
     setIsRangeOpen(false);
   }
 
-  const rangeLabel =
-    from && to
-      ? `${formatDateOnly(from)} – ${formatDateOnly(to)}`
-      : "Date range";
+  const rangeLabel = from && to ? `${formatDateOnly(from)} – ${formatDateOnly(to)}` : "Date range";
+  const activeCategory = category ?? "all";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative w-full">
-        <svg
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
+    <div className="flex flex-col gap-5">
+      <input
+        value={searchInput}
+        onChange={(e) => handleSearchChange(e.target.value)}
+        placeholder="Search articles…"
+        aria-label="Search articles"
+        className="editorial-input text-base"
+      />
+
+      <div
+        role="group"
+        aria-label="Filter by category"
+        className="flex flex-wrap gap-2"
+      >
+        <button
+          type="button"
+          aria-pressed={activeCategory === "all"}
+          onClick={() => navigate({ category: undefined })}
+          className="editorial-tag"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
-        </svg>
-        <input
-          value={searchInput}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder="Search articles…"
-          aria-label="Search articles"
-          className="w-full rounded-lg border border-border bg-surface-primary py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-hidden"
-        />
+          All
+        </button>
+        {CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-pressed={activeCategory === c}
+            onClick={() => navigate({ category: c })}
+            className="editorial-tag"
+          >
+            {c}
+          </button>
+        ))}
       </div>
 
-      <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <TagGroup
-          aria-label="Filter by category"
-          selectionMode="single"
-          disallowEmptySelection
-          selectedKeys={new Set([category ?? "all"])}
-          onSelectionChange={handleCategorySelectionChange}
-        >
-          <TagGroup.List>
-            <Tag id="all">
-              <Newspaper className="size-3.5" />
-              All
-            </Tag>
-            {CATEGORIES.map((c) => {
-              const Icon = CATEGORY_ICONS[c] ?? Newspaper;
-              return (
-                <Tag key={c} id={c}>
-                  <Icon className="size-3.5" />
-                  {c}
-                </Tag>
-              );
-            })}
-          </TagGroup.List>
-        </TagGroup>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Fluid sort toggle */}
-        <div
-          ref={trackRef}
-          className="relative flex items-center gap-1 rounded-full bg-surface-secondary p-1"
-        >
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Sort toggle: a sliding rule under the active label, not a filled pill. */}
+        <div ref={trackRef} className="relative flex items-center gap-5 pb-1.5">
           <span
             aria-hidden
-            className="absolute inset-y-1 rounded-full bg-accent shadow-sm will-change-transform"
-            style={{
-              left: animLeft,
-              width: animWidth,
-              transform: `scaleX(${1 + stretch})`,
-            }}
+            className="absolute bottom-0 h-px bg-foreground will-change-transform"
+            style={{ left: animLeft, width: animWidth }}
           />
           <button
             ref={dateBtnRef}
             type="button"
             onClick={() => navigate({ sortBy: "date" })}
             className={cn(
-              "relative z-10 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200",
-              !isImpact ? "text-accent-foreground" : "text-muted hover:text-foreground",
+              "editorial-rubric transition-colors duration-200",
+              !isImpact ? "text-foreground" : "text-muted hover:text-foreground",
             )}
           >
             Newest first
@@ -237,77 +181,72 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
             type="button"
             onClick={() => navigate({ sortBy: "impact" })}
             className={cn(
-              "relative z-10 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200",
-              isImpact ? "text-accent-foreground" : "text-muted hover:text-foreground",
+              "editorial-rubric transition-colors duration-200",
+              isImpact ? "text-foreground" : "text-muted hover:text-foreground",
             )}
           >
             Highest impact
           </button>
         </div>
 
-        <Popover.Root isOpen={isRangeOpen} onOpenChange={setIsRangeOpen}>
-          <Popover.Trigger>
-            <Button variant="outline" size="sm" className="gap-1.5!">
-              <CalendarRange className="size-4 shrink-0" />
-              <span className="max-w-[120px] truncate sm:max-w-none">{rangeLabel}</span>
-              {from && to && (
-                <X
-                  className="size-3.5 shrink-0 text-muted hover:text-foreground"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    clearRange();
-                  }}
-                />
-              )}
-            </Button>
-          </Popover.Trigger>
-          <Popover.Content placement="bottom start">
-            <Popover.Dialog className="flex flex-col gap-3 p-3">
-              <RangeCalendar.Root
-                value={range}
-                onChange={setRange}
-                minValue={today(getLocalTimeZone()).subtract({ days: 6 })}
-                maxValue={today(getLocalTimeZone())}
-              >
-                <RangeCalendar.Header>
-                  <RangeCalendar.NavButton slot="previous" />
-                  <RangeCalendar.Heading />
-                  <RangeCalendar.NavButton slot="next" />
-                </RangeCalendar.Header>
-                <RangeCalendar.Grid>
-                  <RangeCalendar.GridHeader>
-                    {(day) => (
-                      <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
-                    )}
-                  </RangeCalendar.GridHeader>
-                  <RangeCalendar.GridBody>
-                    {(date) => <RangeCalendar.Cell date={date} />}
-                  </RangeCalendar.GridBody>
-                </RangeCalendar.Grid>
-              </RangeCalendar.Root>
-              <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                <Typography.Paragraph size="xs" color="muted">
-                  {range
-                    ? `${range.start.toString()} – ${range.end.toString()}`
-                    : "Pick a start and end date"}
-                </Typography.Paragraph>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onPress={clearRange}>
-                    Clear
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onPress={applyRange}
-                    isDisabled={!range}
-                  >
-                    Apply
-                  </Button>
+        <div className="ml-auto flex items-center gap-3">
+          <Popover.Root isOpen={isRangeOpen} onOpenChange={setIsRangeOpen}>
+            <Popover.Trigger>
+              <button type="button" className="editorial-tag">
+                <span className="max-w-37.5 truncate">{rangeLabel}</span>
+              </button>
+            </Popover.Trigger>
+            <Popover.Content placement="bottom end">
+              <Popover.Dialog className="flex flex-col gap-3 p-3">
+                <RangeCalendar.Root
+                  value={range}
+                  onChange={setRange}
+                  minValue={today(getLocalTimeZone()).subtract({ days: 6 })}
+                  maxValue={today(getLocalTimeZone())}
+                >
+                  <RangeCalendar.Header>
+                    <RangeCalendar.NavButton slot="previous" />
+                    <RangeCalendar.Heading />
+                    <RangeCalendar.NavButton slot="next" />
+                  </RangeCalendar.Header>
+                  <RangeCalendar.Grid>
+                    <RangeCalendar.GridHeader>
+                      {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+                    </RangeCalendar.GridHeader>
+                    <RangeCalendar.GridBody>
+                      {(date) => <RangeCalendar.Cell date={date} />}
+                    </RangeCalendar.GridBody>
+                  </RangeCalendar.Grid>
+                </RangeCalendar.Root>
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                  <Typography.Paragraph size="xs" color="muted">
+                    {range
+                      ? `${range.start.toString()} – ${range.end.toString()}`
+                      : "Pick a start and end date"}
+                  </Typography.Paragraph>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onPress={clearRange}>
+                      Clear
+                    </Button>
+                    <Button variant="primary" size="sm" onPress={applyRange} isDisabled={!range}>
+                      Apply
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Popover.Dialog>
-          </Popover.Content>
-        </Popover.Root>
+              </Popover.Dialog>
+            </Popover.Content>
+          </Popover.Root>
+
+          {from && to && (
+            <button
+              type="button"
+              onClick={clearRange}
+              className="editorial-rubric text-muted transition-colors hover:text-foreground"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

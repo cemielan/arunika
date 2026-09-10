@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthShell, Field } from "@/components/editorial";
 import {
   hasAuthFieldErrors,
   normalizeEmail,
@@ -50,61 +50,58 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
-      <div className="text-center">
-        <Typography.Heading level={1} className="text-2xl">Sign In</Typography.Heading>
-        <Typography.Paragraph color="muted" className="mt-1">
-          Welcome back to Arunika.
-        </Typography.Paragraph>
-      </div>
+    <AuthShell
+      kicker="Members"
+      title="Sign In"
+      lede="Welcome back to Arunika."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-medium text-accent hover:underline">
+            Create one
+          </Link>
+          .
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <Field label="Email" error={fieldErrors.email}>
+          <input
+            type="email"
+            value={email}
+            aria-invalid={Boolean(fieldErrors.email)}
+            onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })); }}
+            onBlur={() => setFieldErrors((prev) => ({ ...prev, email: validateSignInFields(email, password).email }))}
+            className="editorial-input"
+            placeholder="you@example.com"
+          />
+        </Field>
 
-      <Card variant="default" className="p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Email</Typography.Paragraph>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })); }}
-              onBlur={() => setFieldErrors((prev) => ({ ...prev, email: validateSignInFields(email, password).email }))}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.email ? "border-danger" : "border-border"}`}
-              placeholder="you@example.com"
-            />
-            {fieldErrors.email && <ErrorMessage>{fieldErrors.email}</ErrorMessage>}
-          </div>
+        <Field label="Password" error={fieldErrors.password}>
+          <input
+            type="password"
+            value={password}
+            aria-invalid={Boolean(fieldErrors.password)}
+            onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
+            onBlur={() => setFieldErrors((prev) => ({ ...prev, password: validateSignInFields(email, password).password }))}
+            className="editorial-input"
+            placeholder="Your password"
+          />
+        </Field>
 
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-              onBlur={() => setFieldErrors((prev) => ({ ...prev, password: validateSignInFields(email, password).password }))}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
-              placeholder="Your password"
-            />
-            {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
-          </div>
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="editorial-rubric text-muted transition-colors hover:text-foreground"
+          >
+            Forgot password?
+          </Link>
+        </div>
 
-          <div className="flex justify-end">
-            <Link href="/forgot-password" className="text-sm font-medium text-accent hover:underline">
-              Forgot password?
-            </Link>
-          </div>
-
-          <Button type="submit" variant="primary" isDisabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
-      </Card>
-
-      <Typography.Paragraph size="sm" color="muted" className="text-center">
-        Don&apos;t have an account?{" "}
-        <Link href="/register" className="font-medium text-accent hover:underline">
-          Create one
-        </Link>
-        .
-      </Typography.Paragraph>
-    </div>
+        <button type="submit" className="editorial-btn w-full" disabled={loading}>
+          {loading ? "Signing in…" : "Sign In"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

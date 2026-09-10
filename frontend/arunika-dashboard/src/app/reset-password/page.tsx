@@ -2,12 +2,18 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, ErrorMessage, Typography } from "@heroui/react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { AuthShell, Field } from "@/components/editorial";
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="mx-auto mt-16 text-center text-muted">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="mx-auto mt-16 text-center">
+          <span className="editorial-rubric text-muted">Loading</span>
+        </div>
+      }
+    >
       <ResetForm />
     </Suspense>
   );
@@ -106,86 +112,74 @@ function ResetForm() {
 
   if (reset) {
     return (
-      <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
-        <div className="text-center">
-          <Typography.Heading level={1} className="text-2xl">Password reset</Typography.Heading>
-          <Typography.Paragraph color="muted" className="mt-1">
-            Your password has been reset successfully.
-          </Typography.Paragraph>
-        </div>
-        <Card variant="default" className="p-6 text-center">
-          <Link href="/login" className="font-medium text-accent hover:underline">
-            Sign in with your new password
-          </Link>
-        </Card>
-      </div>
+      <AuthShell
+        kicker="Account recovery"
+        title="Password reset"
+        lede="Your password has been reset successfully."
+      >
+        <Link href="/login" className="font-medium text-accent hover:underline">
+          Sign in with your new password
+        </Link>
+      </AuthShell>
     );
   }
 
   if (mode === "expired") {
     return (
-      <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
-        <div className="text-center">
-          <Typography.Heading level={1} className="text-2xl">Reset link expired</Typography.Heading>
-          <Typography.Paragraph color="muted" className="mt-1">
-            This password reset link is invalid or expired. Request a new one.
-          </Typography.Paragraph>
-        </div>
-        <Card variant="default" className="p-6 text-center">
-          <Link href="/forgot-password" className="font-medium text-accent hover:underline">
-            Send a new reset link
-          </Link>
-        </Card>
-      </div>
+      <AuthShell
+        kicker="Account recovery"
+        title="Reset link expired"
+        lede="This password reset link is invalid or expired. Request a new one."
+      >
+        <Link href="/forgot-password" className="font-medium text-accent hover:underline">
+          Send a new reset link
+        </Link>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="mx-auto mt-8 flex max-w-sm flex-col gap-6 px-4 sm:mt-16">
-      <div className="text-center">
-        <Typography.Heading level={1} className="text-2xl">Reset your password</Typography.Heading>
-        <Typography.Paragraph color="muted" className="mt-1">
-          Choose a new password for your account.
-        </Typography.Paragraph>
-      </div>
-
-      <Card variant="default" className="p-6">
-        <form onSubmit={handleReset} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">New Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.password ? "border-danger" : "border-border"}`}
-              placeholder="Min. 8 characters"
-            />
-            {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <Typography.Paragraph size="sm" weight="medium">Confirm Password</Typography.Paragraph>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
-              className={`rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-accent ${fieldErrors.confirmPassword ? "border-danger" : "border-border"}`}
-              placeholder="Repeat your password"
-            />
-            {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
-          </div>
-
-          <Button type="submit" variant="primary" isDisabled={loading || mode === "verifying"}>
-            {loading ? "Resetting..." : mode === "verifying" ? "Verifying link..." : "Reset password"}
-          </Button>
-        </form>
-      </Card>
-
-      <Typography.Paragraph size="sm" color="muted" className="text-center">
+    <AuthShell
+      kicker="Account recovery"
+      title="Reset your password"
+      lede="Choose a new password for your account."
+      footer={
         <Link href="/login" className="font-medium text-accent hover:underline">
           Back to sign in
         </Link>
-      </Typography.Paragraph>
-    </div>
+      }
+    >
+      <form onSubmit={handleReset} className="flex flex-col gap-6" noValidate>
+        <Field label="New Password" error={fieldErrors.password}>
+          <input
+            type="password"
+            value={password}
+            aria-invalid={Boolean(fieldErrors.password)}
+            onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }}
+            className="editorial-input"
+            placeholder="Min. 8 characters"
+          />
+        </Field>
+
+        <Field label="Confirm Password" error={fieldErrors.confirmPassword}>
+          <input
+            type="password"
+            value={confirmPassword}
+            aria-invalid={Boolean(fieldErrors.confirmPassword)}
+            onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
+            className="editorial-input"
+            placeholder="Repeat your password"
+          />
+        </Field>
+
+        <button
+          type="submit"
+          className="editorial-btn w-full"
+          disabled={loading || mode === "verifying"}
+        >
+          {loading ? "Resetting…" : mode === "verifying" ? "Verifying link…" : "Reset password"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }
