@@ -164,13 +164,21 @@ Everything below is the same plan broken out in full.
   real request telemetry.
 - [x] Smoke-test in production, then call V1 done.
 
-Supabase Migration (in backend): dotnet ef database update --project src\Arunika.Infrastructure --startup-project src\Arunika.Api --connection "Host=db.sjeelltwotjsneyczroq.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=arunikasmc710fds;SSL Mode=Require;Trust Server Certificate=true"
+Supabase migration (run from `backend/`). The connection string lives in the
+`SUPABASE_DB_CONNECTION` environment variable, never in this file:
 
-Pooler Connection:
-Host=aws-0-ap-southeast-1.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.sjeelltwotjsneyczroq;Password=arunikasmc710fds;SSL Mode=Require;Trust Server Certificate=true;GSS Encryption Mode=Disable
+```powershell
+dotnet ef database update --project src\Arunika.Infrastructure --startup-project src\Arunika.Api --connection $env:SUPABASE_DB_CONNECTION
+```
 
-Direct Connection:
-Host=db.sjeelltwotjsneyczroq.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=arunikasmc710fds;SSL Mode=Require;Trust Server Certificate=true
+Connection string shapes (fill the password from the Supabase dashboard under
+Settings -> Database; do not paste the real value into a tracked file):
+
+Pooler (use for the running app — Port 6543, transaction pooling):
+Host=aws-0-<region>.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.<project-ref>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true;GSS Encryption Mode=Disable
+
+Direct (use for EF migrations — Port 5432):
+Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<password>;SSL Mode=Require;Trust Server Certificate=true
 
 ---
 

@@ -61,7 +61,15 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(a => a.Title.Contains(search) || a.RawContent.Contains(search));
+            // Full-text match against the GIN tsvector index on (title, raw_content)
+            // declared in ArticleConfiguration. Written as to_tsvector(title || ' ' ||
+            // raw_content) so Postgres can use that index; a LIKE '%term%' here would
+            // both bypass the index and be case-sensitive.
+            // plainto_tsquery treats the input as plain words, so tsquery operators
+            // (& | ! :*) typed by a user are escaped rather than causing a syntax error.
+            query = query.Where(a => EF.Functions
+                .ToTsVector("english", a.Title + " " + a.RawContent)
+                .Matches(EF.Functions.PlainToTsQuery("english", search)));
         }
 
         if (from is not null)

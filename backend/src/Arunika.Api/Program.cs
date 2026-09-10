@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using Arunika.Api;
 using Arunika.Api.Contracts;
 using Arunika.Api.Middleware;
 using Arunika.Infrastructure;
@@ -68,6 +69,8 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddArunikaRateLimiting();
+
 builder.Services.AddControllers();
 
 // Standardize the 400 (invalid model state) response shape to match the
@@ -132,6 +135,8 @@ app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
 
 app.UseCors();
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

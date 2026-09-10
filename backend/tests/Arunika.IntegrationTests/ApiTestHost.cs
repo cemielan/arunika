@@ -1,3 +1,4 @@
+using Arunika.Api;
 using Arunika.Api.Controllers;
 using Arunika.Application.Abstractions;
 using Arunika.Application.Services;
@@ -15,6 +16,10 @@ namespace Arunika.IntegrationTests;
 /// Deliberately avoids booting the real <c>Program</c> host — that wires up
 /// Hangfire + a real Postgres connection string at startup, which isn't
 /// available/needed just to test routing, envelope shape, and serialization.
+/// The real rate limiter is registered, since its policies are attached to the
+/// controllers by attribute and are part of what these tests cover. Each test class
+/// gets its own host (xUnit <c>IClassFixture</c>), so one class exhausting a limit
+/// cannot affect another.
 /// </summary>
 public sealed class ApiTestHost : IAsyncLifetime
 {
@@ -34,8 +39,10 @@ public sealed class ApiTestHost : IAsyncLifetime
         builder.Services.AddScoped<IArticleAnalysisRepository, FakeArticleAnalysisRepository>();
         builder.Services.AddScoped<IBriefingGenerationService, FakeBriefingGenerationService>();
         builder.Services.AddScoped<DailyBriefingService>();
+        builder.Services.AddArunikaRateLimiting();
 
         _app = builder.Build();
+        _app.UseRateLimiter();
         _app.MapControllers();
 
         await _app.StartAsync();

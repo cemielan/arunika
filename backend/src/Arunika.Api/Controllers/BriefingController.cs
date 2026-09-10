@@ -4,6 +4,7 @@ using Arunika.Application.Constants;
 using Arunika.Application.Services;
 using Arunika.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Arunika.Api.Controllers;
 
@@ -18,6 +19,8 @@ namespace Arunika.Api.Controllers;
 [ApiController]
 [Route("v1/briefing")]
 [Produces("application/json")]
+// Tighter than the global limit: a cache miss here can start an AI generation.
+[EnableRateLimiting(RateLimiting.BriefingPolicy)]
 public class BriefingController(
     IArticleRepository articleRepository,
     IArticleAnalysisRepository articleAnalysisRepository,
