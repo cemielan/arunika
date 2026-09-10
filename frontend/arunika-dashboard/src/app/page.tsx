@@ -34,15 +34,18 @@ const TOP_STORY_COUNT = 10;
  */
 function Colophon({ windowDays }: { windowDays: number }) {
   return (
-    <details className="editorial-disclosure editorial-reveal -mt-6 sm:-mt-10">
-      <summary className="-my-2 inline-flex items-center gap-1.5 py-2 text-muted transition-colors hover:text-foreground">
-        <span className="editorial-disclosure-sign inline-block leading-none">+</span>
-        <Rubric>How this briefing is made</Rubric>
+    <details className="editorial-disclosure editorial-reveal editorial-panel-filled border border-border border-l-2 border-l-accent px-5 py-4 sm:px-6 sm:py-5">
+      <summary className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <Rubric className="text-accent!">New here?</Rubric>
+        <span className="flex-1 text-[0.9375rem] text-foreground transition-colors hover:text-accent sm:text-base">
+          How this briefing is made
+        </span>
+        <span className="editorial-disclosure-sign inline-block leading-none text-muted">+</span>
       </summary>
 
-      <div className="mt-3 max-w-2xl border-l border-border pl-4 text-sm leading-relaxed text-muted">
+      <div className="mt-4 max-w-2xl border-t border-border pt-4 text-sm leading-relaxed text-muted">
         <p>
-          <strong className="font-medium text-foreground">One.</strong> Arunika reads every
+          <strong className="font-medium text-foreground">One -</strong> Arunika reads every
           story that reached the{" "}
           <Link href="/news" className="text-accent hover:underline">
             news feed
@@ -50,11 +53,12 @@ function Colophon({ windowDays }: { windowDays: number }) {
           in the last {windowDays} days.
         </p>
         <p className="mt-2">
-          <strong className="font-medium text-foreground">Two.</strong> Each story is scored
+          <strong className="font-medium text-foreground">Two -</strong> Each story is scored
           0–100 for market impact, and the {TOP_STORY_COUNT} highest are kept.
         </p>
         <p className="mt-2">
-          <strong className="font-medium text-foreground">Three.</strong> AI writes the
+          <strong className="font-medium text-foreground">Three -</strong>{" "}
+          AI writes the
           summary at the top of the page and the &ldquo;Why it matters&rdquo; note under each
           story.
         </p>
