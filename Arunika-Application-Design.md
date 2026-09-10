@@ -286,11 +286,16 @@ provider ever changes):
       },
       "sentiment": { "type": "string", "enum": ["Bullish", "Bearish", "Neutral"] },
       "sentimentConfidence": { "type": "number", "minimum": 0, "maximum": 1 },
+      "breadth": { "type": "integer", "minimum": 0, "maximum": 25 },
+      "magnitude": { "type": "integer", "minimum": 0, "maximum": 25 },
+      "surprise": { "type": "integer", "minimum": 0, "maximum": 20 },
+      "immediacy": { "type": "integer", "minimum": 0, "maximum": 15 },
+      "certainty": { "type": "integer", "minimum": 0, "maximum": 15 },
       "impactScore": {
         "type": "integer",
         "minimum": 0,
         "maximum": 100,
-        "description": "Likely near-term market significance"
+        "description": "The exact sum of the five rubric components above"
       },
       "impactRationale": { "type": "string" },
       "sectors": {
@@ -307,11 +312,95 @@ provider ever changes):
       },
       "keywords": { "type": "array", "items": { "type": "string" }, "maxItems": 8 }
     },
-    "required": ["summary", "category", "sentiment", "impactScore"],
+    "required": [
+      "summary", "category", "sentiment",
+      "breadth", "magnitude", "surprise", "immediacy", "certainty",
+      "impactScore", "impactRationale"
+    ],
     "additionalProperties": false
   }
 }
 ```
+
+### Impact scoring rubric
+
+The first version of this schema described `impactScore` only as "likely
+near-term market significance" and left the model to invent a measuring
+instrument for every article. Two things went wrong, both visible in production
+data:
+
+- **Scores clustered on multiples of 5.** An unanchored 0–100 scale sends a
+  model to the rating conventions in its training data, where human-written
+  scores land on 5s and 10s. A 100-point scale was being used as a ~20-value
+  one.
+- **The scale drifted between models.** `GeminiModelRotator` rotates models and
+  `CompositeAiEnrichmentService` falls through to OpenRouter, so articles in one
+  briefing are scored by different models and then ranked against each other.
+  Without a shared rubric those numbers were never on the same ruler.
+
+The rubric lives in one place, `ImpactScoringRubric.Instructions`, and is sent
+verbatim by every provider — as the Gemini system instruction and as the
+OpenRouter system message.
+
+The model rates five independent components; **the total is their sum, computed
+in application code rather than by the model**. Five independently chosen
+components land on a multiple of 5 only by coincidence, so the clustering is
+fixed structurally rather than by asking the model not to round.
+
+| Component | Range | What it measures |
+|---|---|---|
+| `breadth` | 0–25 | How much of the market the news touches: one company → one sector → the whole market |
+| `magnitude` | 0–25 | Plausible size of the resulting price move |
+| `surprise` | 0–20 | How much was not already priced in. A scheduled event landing on consensus scores near zero however large the topic |
+| `immediacy` | 0–15 | How soon the effect arrives: today's session → a multi-year theme |
+| `certainty` | 0–15 | How firm the news is: confirmed and in effect → an unnamed-source rumour |
+
+`surprise` is the component that separates market impact from mere topic
+prominence, and it is the one most often missing from naive scoring: "Fed holds
+rates as expected" is a major subject with almost no impact.
+
+The rubric also gives band anchors (90–100 systemic, 75–89 major, 60–74
+significant, 40–59 moderate, 20–39 minor, 0–19 negligible), each with worked
+examples. These are a sanity check on the sum, not a second way to compute it.
+
+Two mechanical details matter as much as the wording:
+
+- **Field order.** Structured output is generated as a token stream, so the five
+  components are ordered ahead of `impactScore` (via `Schema.PropertyOrdering`
+  on Gemini, by prompt order on OpenRouter) and `impactRationale` after it. The
+  model therefore does the rating before it commits to a total, instead of
+  picking a round number and writing a justification to fit it.
+- **Temperature.** Pinned at 0.2 for enrichment. At the default the same article
+  could land in a different band on two runs, which readers see as the briefing
+  reshuffling for no reason.
+
+`ImpactScoringRubric.ResolveScore` clamps each component to its own ceiling
+before summing, so the total cannot exceed 100 without a separate clamp. If a
+component is missing it falls back to the model's own `impactScore`, clamped —
+Gemini's schema makes all five required, but OpenRouter is called with
+`response_format: json_object`, which enforces no schema at all, so this is a
+genuine trust boundary rather than defensive padding.
+
+**Ranking.** Because scores are integers, ties still happen and the briefing
+takes a top ten off the ordering. Every impact-ordered query therefore breaks
+ties on `PublishedAt` then `Id`; ordering on the score alone left tied rows in
+whatever order the query plan produced, so which stories made the cut could
+change between two requests over unchanged data.
+
+**Changing the rubric does not rescore existing rows, by design.** The rubric
+applies to new enrichments only; articles already enriched keep the score they
+were given. Nothing in the pipeline revisits a completed analysis — the only two
+paths that enqueue `EnrichArticleJob` are `FetchNewsJob`, for newly ingested
+unique articles, and `RetryFailedEnrichmentJob`, for articles marked `Failed`
+(which have no analysis to preserve). `EnrichArticleJob` additionally returns
+early for any article already marked `Completed`, so a job replayed after a
+worker dies cannot quietly rescore a finished article on a newer scale.
+
+The cost of that choice is a mixed corpus: until the pre-rubric articles age out
+of the 7-day window, the briefing ranks two scales against each other.
+Backfilling would cost a full re-enrichment of the window in API quota.
+`ArticleAnalysis.ModelVersion` records what produced each row, so a deliberate
+sweep remains possible later.
 
 Implementation notes:
 

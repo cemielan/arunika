@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   free-tier budget, cooldowns and success/failure counts per model
 - Briefing top stories now carry summary, sentiment, category, source,
   publication time and impact rationale, so the briefing page can run excerpts
+- Impact scoring rubric (`ImpactScoringRubric`), shared verbatim by every
+  enrichment provider: five rated components — breadth, magnitude, surprise,
+  immediacy and certainty — plus band anchors with worked examples
+- "How this briefing is made" note on the briefing page, explaining in three
+  steps where a briefing comes from and how often it is rebuilt
 
 ### Changed
 - Briefing page redesigned as a newsletter issue: masthead, drop-cap lede with a
@@ -50,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Gemini free-tier budget is now tracked per model (RPM *and* RPD) from
   `Gemini:ModelQuotas`, derated by `Gemini:QuotaSafetyPercent`, instead of a
   single shared counter
+- The impact score is now the sum of the five rubric components, computed in
+  application code instead of chosen by the model. The components are generated
+  ahead of the total (`Schema.PropertyOrdering` on Gemini, prompt order on
+  OpenRouter) so the reasoning precedes the number, and `impactRationale` is
+  generated after it and is now required
+- Enrichment temperature pinned at 0.2, so the same article scores the same way
+  on two runs
 
 ### Deprecated
 - N/A
@@ -71,6 +83,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry amplification: every error was treated as retryable across 3 attempts ×
   6 models, so one bad article could burn dozens of requests. Non-transient
   failures (safety blocks, schema violations, auth errors) no longer retry
+- Impact scores clustered on multiples of 5, collapsing a 100-point scale into
+  roughly 20 usable values, because the only guidance the models got was
+  "integer 0-100 (likely near-term market significance)"
+- Impact-ordered queries had no tiebreak, so tied stories came back in whatever
+  order the query plan produced and the briefing's top ten could change between
+  requests over unchanged data; ties now break on publication time then id
+- Impact scores and sector magnitudes went from the model to the database
+  unvalidated. OpenRouter is called with `response_format: json_object`, which
+  enforces no schema, so an out-of-range value could be stored verbatim
+- `EnrichArticleJob` re-ran for articles that were already enriched. Because
+  `SaveAnalysisAsync` is an idempotent upsert, a job replayed after a worker
+  died mid-run overwrote a finished analysis; it now returns early for articles
+  marked `Completed`, so existing scores are never silently rewritten under a
+  newer rubric
 
 ### Security
 - N/A

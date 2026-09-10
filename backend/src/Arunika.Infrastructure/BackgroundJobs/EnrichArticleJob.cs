@@ -1,4 +1,5 @@
 using Arunika.Application.Abstractions;
+using Arunika.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Hangfire;
 
@@ -21,6 +22,18 @@ public class EnrichArticleJob(
         if (article is null)
         {
             logger.LogWarning("EnrichArticleJob: article {ArticleId} not found; skipping.", articleId);
+            return;
+        }
+
+        // An article that already has an analysis keeps it. SaveAnalysisAsync is an
+        // idempotent upsert, so a job replayed after a worker died mid-run would
+        // otherwise rescore an article that finished successfully — and since the
+        // scoring rubric changes over time, that silently swaps one scale for
+        // another on a row nobody asked to revisit. Re-enrichment is a deliberate
+        // sweep, not something a duplicate job should trigger.
+        if (article.EnrichmentStatus == EnrichmentStatus.Completed)
+        {
+            logger.LogDebug("EnrichArticleJob: article {ArticleId} is already enriched; skipping.", articleId);
             return;
         }
 

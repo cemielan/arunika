@@ -87,6 +87,8 @@ public class BriefingController(
 
         var topStories = articles
             .OrderByDescending(article => article.Analysis!.ImpactScore)
+            .ThenByDescending(article => article.PublishedAt)
+            .ThenBy(article => article.Id)
             .Take(TopStoryCount)
             .Select(article => new TopStoryDto(
                 article.Id,

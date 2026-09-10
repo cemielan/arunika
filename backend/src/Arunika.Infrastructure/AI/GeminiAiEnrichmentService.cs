@@ -60,7 +60,12 @@ public class GeminiAiEnrichmentService(
         {
             ResponseMimeType = "application/json",
             ResponseSchema = ResponseSchema,
-            SafetySettings = SafetySettings
+            SafetySettings = SafetySettings,
+            SystemInstruction = new Content { Parts = [new Part { Text = ImpactScoringRubric.Instructions }] },
+            // Scoring should be reproducible. At the default temperature the same
+            // article can land in a different band on two runs, which is visible
+            // to readers as the briefing's ranking shuffling for no reason.
+            Temperature = 0.2f
         };
 
         var maxAttempts = Math.Max(1, options.Value.MaxAttemptsPerModel);
@@ -280,7 +285,7 @@ public class GeminiAiEnrichmentService(
             .Select(s => new SectorImpactResult(
                 s.Sector,
                 Enum.Parse<ImpactDirection>(s.Direction, ignoreCase: true),
-                s.Magnitude))
+                Math.Clamp(s.Magnitude, 0, 100)))
             .ToList();
 
         return new ArticleAnalysisResult(
@@ -288,16 +293,28 @@ public class GeminiAiEnrichmentService(
             payload.Category,
             sentiment,
             payload.SentimentConfidence,
-            payload.ImpactScore,
+            ImpactScoringRubric.ResolveScore(
+                payload.Breadth, payload.Magnitude, payload.Surprise,
+                payload.Immediacy, payload.Certainty, payload.ImpactScore),
             payload.ImpactRationale,
             sectors,
             payload.Keywords ?? [],
             modelVersion);
     }
 
+    // Structured output is generated in order, so the five rubric components are
+    // listed — and ordered — ahead of impactScore, and impactRationale after it.
+    // The model therefore does the rating before it commits to a total, instead
+    // of picking a round number and writing a justification to fit.
     private static Schema BuildResponseSchema() => new()
     {
         Type = SchemaType.Object,
+        PropertyOrdering =
+        [
+            "summary", "category", "sentiment", "sentimentConfidence",
+            "breadth", "magnitude", "surprise", "immediacy", "certainty",
+            "impactScore", "impactRationale", "sectors", "keywords"
+        ],
         Properties = new Dictionary<string, Schema>
         {
             ["summary"] = new Schema { Type = SchemaType.String, Description = "Neutral 2-3 sentence summary, no speculation." },
@@ -308,14 +325,19 @@ public class GeminiAiEnrichmentService(
             },
             ["sentiment"] = new Schema { Type = SchemaType.String, Enum = ["Bullish", "Bearish", "Neutral"] },
             ["sentimentConfidence"] = new Schema { Type = SchemaType.Number, Minimum = 0, Maximum = 1 },
+            ["breadth"] = new Schema { Type = SchemaType.Integer, Minimum = 0, Maximum = 25, Description = "Rubric component: how much of the market the news touches." },
+            ["magnitude"] = new Schema { Type = SchemaType.Integer, Minimum = 0, Maximum = 25, Description = "Rubric component: plausible size of the price move." },
+            ["surprise"] = new Schema { Type = SchemaType.Integer, Minimum = 0, Maximum = 20, Description = "Rubric component: how much was not already priced in." },
+            ["immediacy"] = new Schema { Type = SchemaType.Integer, Minimum = 0, Maximum = 15, Description = "Rubric component: how soon the effect arrives." },
+            ["certainty"] = new Schema { Type = SchemaType.Integer, Minimum = 0, Maximum = 15, Description = "Rubric component: how firm the news is." },
             ["impactScore"] = new Schema
             {
                 Type = SchemaType.Integer,
                 Minimum = 0,
                 Maximum = 100,
-                Description = "Likely near-term market significance."
+                Description = "The exact sum of breadth, magnitude, surprise, immediacy and certainty. Never rounded to a multiple of 5 or 10."
             },
-            ["impactRationale"] = new Schema { Type = SchemaType.String },
+            ["impactRationale"] = new Schema { Type = SchemaType.String, Description = "One or two sentences naming the two components that dominated the score." },
             ["sectors"] = new Schema
             {
                 Type = SchemaType.Array,
@@ -338,7 +360,12 @@ public class GeminiAiEnrichmentService(
                 MaxItems = 8
             }
         },
-        Required = ["summary", "category", "sentiment", "impactScore"]
+        Required =
+        [
+            "summary", "category", "sentiment",
+            "breadth", "magnitude", "surprise", "immediacy", "certainty",
+            "impactScore", "impactRationale"
+        ]
     };
 
     private sealed record GeminiAnalysisPayload(
@@ -346,6 +373,11 @@ public class GeminiAiEnrichmentService(
         string Category,
         string Sentiment,
         float SentimentConfidence,
+        int? Breadth,
+        int? Magnitude,
+        int? Surprise,
+        int? Immediacy,
+        int? Certainty,
         int ImpactScore,
         string? ImpactRationale,
         List<GeminiSectorImpactPayload>? Sectors,

@@ -78,13 +78,27 @@ public class OpenRouterAiEnrichmentService(
                 new
                 {
                     role = "system",
-                    content = """
-You are a financial market intelligence analyst. Analyze the news article and return a JSON object with:
+                    // The rubric is shared verbatim with the Gemini provider. Model
+                    // rotation and provider fallback mean one briefing can be scored
+                    // by several models, so they have to be reading the same scale.
+                    // Field order matters here for the same reason it does on the
+                    // Gemini schema: the components must be written before the total.
+                    content = $$"""
+{{ImpactScoringRubric.Instructions}}
+
+RESPONSE FORMAT
+
+Return a JSON object with these keys, in this order:
 - summary: neutral 2-3 sentence summary, no speculation
 - category: one of "Politics", "Economy", "Markets", "Banking", "Technology", "Commodities", "Crypto"
 - sentiment: "Bullish", "Bearish", or "Neutral"
 - sentimentConfidence: number 0-1
-- impactScore: integer 0-100 (likely near-term market significance)
+- breadth: integer 0-25
+- magnitude: integer 0-25
+- surprise: integer 0-20
+- immediacy: integer 0-15
+- certainty: integer 0-15
+- impactScore: integer 0-100, the exact sum of the five components above
 - impactRationale: string explaining the score
 - sectors: array of { sector: string, direction: "Positive"|"Negative"|"Neutral", magnitude: integer 0-100 }
 - keywords: array of strings, max 8 items
@@ -121,7 +135,7 @@ Return ONLY valid JSON, no markdown, no explanation.
             .Select(s => new SectorImpactResult(
                 s.Sector,
                 Enum.Parse<ImpactDirection>(s.Direction, ignoreCase: true),
-                s.Magnitude))
+                Math.Clamp(s.Magnitude, 0, 100)))
             .ToList();
 
         return new ArticleAnalysisResult(
@@ -129,7 +143,9 @@ Return ONLY valid JSON, no markdown, no explanation.
             payload.Category,
             sentiment,
             payload.SentimentConfidence,
-            payload.ImpactScore,
+            ImpactScoringRubric.ResolveScore(
+                payload.Breadth, payload.Magnitude, payload.Surprise,
+                payload.Immediacy, payload.Certainty, payload.ImpactScore),
             payload.ImpactRationale,
             sectors,
             payload.Keywords ?? [],
@@ -159,6 +175,11 @@ Return ONLY valid JSON, no markdown, no explanation.
         string Category,
         string Sentiment,
         float SentimentConfidence,
+        int? Breadth,
+        int? Magnitude,
+        int? Surprise,
+        int? Immediacy,
+        int? Certainty,
         int ImpactScore,
         string? ImpactRationale,
         List<OpenRouterSectorImpactPayload>? Sectors,

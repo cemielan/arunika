@@ -62,6 +62,32 @@ flowchart TB
     Scheduler -.-> API
 ```
 
+### How the impact score works
+
+Every enriched article carries an impact score from 0 to 100, and the briefing
+is the ten highest-scoring stories from a rolling seven-day window.
+
+The score is not a single judgement call by the model. The model rates five
+components against a shared rubric, and the score is their sum, computed in
+application code:
+
+| Component | Range | What it measures |
+|-----------|-------|------------------|
+| `breadth` | 0–25 | How much of the market the news touches |
+| `magnitude` | 0–25 | Plausible size of the resulting price move |
+| `surprise` | 0–20 | How much was not already priced in |
+| `immediacy` | 0–15 | How soon the effect arrives |
+| `certainty` | 0–15 | How firm the news is — confirmed, or a rumour |
+
+Splitting the judgement this way is what keeps the scale usable. Asked for a
+bare 0–100 number, models answer in multiples of 5, which turns a 100-point
+scale into about 20 values and leaves the top stories tied with each other.
+
+The rubric lives in `ImpactScoringRubric` and is sent verbatim by every
+provider, so scores stay comparable across model rotation and provider
+fallback. Full rationale and band anchors are in
+[the design doc, §5](Arunika-Application-Design.md).
+
 ### Tech Stack
 
 | Layer | Technology |

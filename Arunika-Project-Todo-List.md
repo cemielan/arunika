@@ -186,8 +186,14 @@ Host=db.sjeelltwotjsneyczroq.supabase.co;Port=5432;Database=postgres;Username=po
 
 ## Phase 10 — V3: sentiment/impact refinement, sector analysis, email digest
 
-- [ ] Review real sentiment/impact output against a few weeks of production
-  data; tune the prompt/schema if scores cluster oddly.
+- [x] Review real sentiment/impact output against a few weeks of production
+  data; tune the prompt/schema if scores cluster oddly. Scores were clustering
+  on multiples of 5; replaced the one-line description with a shared five-component
+  rubric (`ImpactScoringRubric`, design doc §5) whose total is summed in code.
+  Articles enriched before the rubric landed keep their old scores — decided
+  deliberately, rather than spending API quota on a backfill. Only new and
+  previously-failed articles are scored under the rubric, so the two scales mix
+  until the pre-rubric articles age out of the 7-day briefing window.
 - [ ] Build the sector-aggregation view (`/v1/sectors`) and dashboard page.
 - [ ] Integrate an email provider (e.g. SendGrid); build daily/weekly digest
   templates.

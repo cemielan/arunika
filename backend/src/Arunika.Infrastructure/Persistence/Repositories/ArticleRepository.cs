@@ -118,6 +118,8 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Include(a => a.SectorImpacts)
                 .ThenInclude(impact => impact.Sector)
             .OrderByDescending(a => a.Analysis!.ImpactScore)
+            .ThenByDescending(a => a.PublishedAt)
+            .ThenBy(a => a.Id)
             .Take(take)
             .ToListAsync(cancellationToken);
     }
@@ -131,7 +133,13 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Include(a => a.Source)
             .Include(a => a.SectorImpacts)
                 .ThenInclude(impact => impact.Sector)
+            // Ties have to break on something stable. Ordering on the score alone
+            // leaves tied rows in whatever order the query plan produces, and the
+            // briefing then takes the top ten off that list — so which stories made
+            // the cut could change between two requests over unchanged data.
             .OrderByDescending(a => a.Analysis!.ImpactScore)
+            .ThenByDescending(a => a.PublishedAt)
+            .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
 
     public async Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
