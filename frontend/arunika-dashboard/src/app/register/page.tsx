@@ -125,44 +125,52 @@ export default function RegisterPage() {
       </form>
 
       <Modal state={modalState}>
-        <Modal.Backdrop isDismissable={false} />
-        <Modal.Container size="sm">
-          {/*
-            Square corners, a hairline border and no shadow, overriding
-            HeroUI's rounded/elevated defaults so the dialog reads as the
-            same bordered panel as the rest of the site rather than a
-            generic app modal. The `!` suffixes are needed because the
-            base `.modal__dialog` rule sets these directly (not via a
-            Tailwind utility), so an unmarked override loses the cascade.
-          */}
-          <Modal.Dialog className="rounded-none! border! border-border! bg-surface! shadow-none!">
-            <Modal.Header>
-              <Rubric>Subscribe</Rubric>
-              <Modal.Heading className="editorial-display text-xl! font-semibold! text-foreground!">
-                Daily email summary
-              </Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className="flex flex-col gap-3">
-              <p className="text-sm leading-relaxed text-foreground/90">
-                Creating account subscribes {normalizeEmail(email)} to the Arunika daily
-                briefing email.
-              </p>
-              <p className="text-sm leading-relaxed text-muted">
-                We will send today&apos;s market briefing summary to your inbox every
-                morning, shortly after it is generated. You can opt out at any time.
-                Cancel to go back without creating an account.
-              </p>
-            </Modal.Body>
-            <Modal.Footer className="gap-2">
-              <button type="button" className="editorial-btn-ghost" onClick={modalState.close}>
-                Cancel
-              </button>
-              <button type="button" className="editorial-btn" disabled={loading} onClick={() => void handleAccept()}>
-                {loading ? "Creating account…" : "Accept & create account"}
-              </button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
+        {/*
+          Modal.Container must be nested inside Modal.Backdrop. Rendered as a
+          sibling, react-aria's Modal finds no overlay in context and wraps
+          itself in a default, unstyled ModalOverlay, so the dialog loses the
+          fixed full-viewport centering that lives on `.modal__backdrop` and
+          drops into normal document flow.
+        */}
+        <Modal.Backdrop isDismissable={false}>
+          <Modal.Container size="sm">
+            {/*
+              Square corners, a hairline border and no shadow, overriding
+              HeroUI's rounded/elevated defaults so the dialog reads as the
+              same bordered panel as the rest of the site rather than a
+              generic app modal. The `!` suffixes are needed because the
+              base `.modal__dialog` rule sets these directly (not via a
+              Tailwind utility), so an unmarked override loses the cascade.
+            */}
+            <Modal.Dialog className="rounded-none! border! border-border! bg-surface! shadow-none!">
+              <Modal.Header>
+                <Rubric>Subscribe</Rubric>
+                <Modal.Heading className="editorial-display text-xl! font-semibold! text-foreground!">
+                  Daily email summary
+                </Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="flex flex-col gap-3">
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  Creating account subscribes {normalizeEmail(email)} to the Arunika daily
+                  briefing email.
+                </p>
+                <p className="text-sm leading-relaxed text-muted">
+                  We will send today&apos;s market briefing summary to your inbox every
+                  morning, shortly after it is generated. You can opt out at any time.
+                  Cancel to go back without creating an account.
+                </p>
+              </Modal.Body>
+              <Modal.Footer className="gap-2">
+                <button type="button" className="editorial-btn-ghost" onClick={modalState.close}>
+                  Cancel
+                </button>
+                <button type="button" className="editorial-btn" disabled={loading} onClick={() => void handleAccept()}>
+                  {loading ? "Creating account…" : "Accept & create account"}
+                </button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
       </Modal>
     </AuthShell>
   );

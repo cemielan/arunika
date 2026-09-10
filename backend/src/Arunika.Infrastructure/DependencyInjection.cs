@@ -4,7 +4,6 @@ using Arunika.Infrastructure.AI;
 using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
 using Arunika.Infrastructure.Email;
-using Arunika.Infrastructure.News.Gdelt;
 using Arunika.Infrastructure.News.FinancialModelingPrep;
 using Arunika.Infrastructure.News.Rss;
 using Arunika.Infrastructure.Persistence;
@@ -91,17 +90,10 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(baseUrl);
         });
 
-        services.AddHttpClient<INewsFetcher, GdeltNewsFetcher>(client =>
+        foreach (var (sourceName, feedUrl) in RssFeeds)
         {
-            client.BaseAddress = new Uri("https://api.gdeltproject.org/api/v2/");
-            client.Timeout = TimeSpan.FromSeconds(15);
-        });
-
-        RegisterRssFeed(services, "CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html");
-        RegisterRssFeed(services, "MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories");
-        RegisterRssFeed(services, "Yahoo Finance", "https://finance.yahoo.com/news/rssindex");
-        RegisterRssFeed(services, "Reuters Business News", "https://feeds.reuters.com/reuters/businessNews");
-        RegisterRssFeed(services, "Reuters Markets News", "https://feeds.reuters.com/reuters/marketsNews");
+            RegisterRssFeed(services, sourceName, feedUrl);
+        }
 
         services.AddScoped<FetchNewsJob>();
         services.AddScoped<EnrichArticleJob>();
@@ -131,10 +123,43 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>
+    /// The free RSS feeds Arunika polls. Each <c>SourceName</c> must match a
+    /// <c>news_sources.Name</c> seeded in <see cref="Persistence.Configurations.NewsSourceConfiguration"/>
+    /// — <see cref="BackgroundJobs.FetchNewsJob"/> looks the source up by name and
+    /// skips the feed entirely when no row matches, which fails silently.
+    /// RssFeedSeedingTests guards that pairing.
+    /// </summary>
+    public static readonly (string SourceName, string FeedUrl)[] RssFeeds =
+    [
+        // Ordered by the TrustScore seeded in NewsSourceConfiguration, highest first.
+        ("Federal Reserve Press Releases", "https://www.federalreserve.gov/feeds/press_all.xml"),
+        ("WSJ Markets", "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain"),
+        ("BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml"),
+        ("Antara Ekonomi", "https://www.antaranews.com/rss/ekonomi.xml"),
+        ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+        ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories"),
+        ("CNBC Indonesia Market", "https://www.cnbcindonesia.com/market/rss"),
+        ("Kontan Investasi", "https://investasi.kontan.co.id/rss"),
+        ("Detik Finance", "https://finance.detik.com/rss"),
+        // Dropped sources, all still seeded but inactive so their existing
+        // articles keep a valid SourceId: Reuters Business/Markets News (82 —
+        // feeds.reuters.com was retired and no longer resolves), Yahoo Finance
+        // (70) and GDELT (60) as the lowest-trust feeds, and Nasdaq Markets
+        // (70), Investing.com (65) and Seeking Alpha (60), which were never
+        // seeded at all.
+    ];
+
     private static void RegisterRssFeed(IServiceCollection services, string sourceName, string feedUrl)
     {
         var clientName = $"rss-{sourceName.ToLowerInvariant().Replace(" ", "-")}";
-        services.AddHttpClient(clientName);
+        services.AddHttpClient(clientName, client =>
+        {
+            // Some publishers (federalreserve.gov among them) answer 404 to a
+            // request with no User-Agent, so every RSS client identifies itself.
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("ArunikaNewsBot/1.0 (+https://github.com/Kadmiel/arunika)");
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
         services.AddTransient<INewsFetcher>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
