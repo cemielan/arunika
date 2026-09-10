@@ -87,7 +87,10 @@ export function InstallPrompt() {
   if (!installEvent && !showIosHint) return null;
 
   return (
-    <div className="editorial-panel fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)] max-w-sm bg-surface p-4 shadow-lg sm:bottom-6 sm:left-6">
+    // The bottom offset adds the home-indicator safe area on top of the
+    // usual gap, so the card clears it instead of sitting flush against —
+    // or getting clipped by — the gesture bar in the installed PWA.
+    <div className="editorial-panel fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 w-[calc(100%-2rem)] max-w-sm bg-surface p-4 shadow-lg sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:left-6">
       <button
         onClick={dismiss}
         className="editorial-rubric absolute right-3 top-3 text-muted transition-colors hover:text-foreground"

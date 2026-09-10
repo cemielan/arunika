@@ -23,7 +23,7 @@ function WhyItMatters({ rationale }: { rationale: string | null }) {
 
   return (
     <details className="editorial-disclosure mt-3">
-      <summary className="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-foreground">
+      <summary className="-my-2 inline-flex items-center gap-1.5 py-2 text-muted transition-colors hover:text-foreground">
         <span className="editorial-disclosure-sign inline-block leading-none">+</span>
         <Rubric>Why it matters</Rubric>
       </summary>

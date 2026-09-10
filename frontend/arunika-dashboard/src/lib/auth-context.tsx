@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
-import { Alert } from "@heroui/react";
 import { getSupabaseClient } from "./supabase";
 import { getMe, siteUrl, upsertMe } from "./api";
 import {
@@ -275,26 +274,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Toast, built as a bordered editorial panel rather than HeroUI's rounded,
+ * filled Alert — consistent with the rest of the site, and with no icon,
+ * since the status is already named in words. The one colour cue (the status
+ * word) is never the only carrier of meaning: the word itself says "Success"
+ * or "Error".
+ */
 export function NotificationBanner() {
   const { notification, dismissNotification } = useAuth();
 
   if (!notification) return null;
 
+  const tone = notification.status === "success" ? "text-success" : "text-danger";
+  const label = notification.status === "success" ? "Success" : "Error";
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[calc(100%-2rem)] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300 sm:bottom-6 sm:right-6">
-      <Alert status={notification.status}>
-        <Alert.Indicator />
-        <Alert.Content>
-          <Alert.Title>{notification.title}</Alert.Title>
-          <Alert.Description>{notification.message}</Alert.Description>
-        </Alert.Content>
+    // Mobile: docked below the header rather than the bottom corner, both to
+    // clear the home-indicator safe area and because the install prompt
+    // already lives bottom-left there — at full toast width the two would
+    // otherwise overlap. Desktop keeps the original bottom-right placement,
+    // where the install prompt never grows wide enough to collide.
+    <div className="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+4.25rem)] z-50 animate-in fade-in slide-in-from-top-2 duration-300 sm:inset-x-auto sm:top-auto sm:right-6 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-full sm:max-w-sm">
+      <div className="editorial-panel relative bg-surface p-4 shadow-lg">
         <button
           onClick={dismissNotification}
-          className="absolute right-2 top-2 text-sm text-muted hover:text-foreground"
+          className="editorial-rubric absolute right-4 top-4 text-muted transition-colors hover:text-foreground"
         >
-          &times;
+          Dismiss
         </button>
-      </Alert>
+        <span className={`editorial-rubric ${tone}`}>{label}</span>
+        <p className="editorial-display mt-1 pr-16 text-lg text-foreground">{notification.title}</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">{notification.message}</p>
+      </div>
     </div>
   );
 }

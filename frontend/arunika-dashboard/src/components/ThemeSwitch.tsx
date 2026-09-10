@@ -26,7 +26,9 @@ export function ThemeSwitch({ className = "" }: { className?: string }) {
       type="button"
       aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className={`editorial-rubric text-muted transition-colors hover:text-foreground ${className}`}
+      // Negative margin expands the tap target for comfortable thumb use
+      // without growing the visible label or shifting surrounding layout.
+      className={`editorial-rubric -m-2 p-2 text-muted transition-colors hover:text-foreground ${className}`}
     >
       {/*
         Reserve the width of the longer word so the header does not reflow when

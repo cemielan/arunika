@@ -64,7 +64,11 @@ export function NavBar() {
 
   return (
     <header
-      className="sticky top-0 z-40 border-b border-border bg-background/80
+      // The extra top padding clears the iOS status bar / notch when the
+      // installed PWA draws under it (`viewportFit: "cover"` in layout.tsx):
+      // the bar's background still reaches the true top edge since the
+      // header itself is pinned there, only its content is pushed down.
+      className="sticky top-0 z-40 border-b border-border bg-background/80 pt-[env(safe-area-inset-top)]
       backdrop-blur transition-[background-color,border-color] duration-120 ease-linear
       supports-backdrop-filter:bg-background/60"
     >
@@ -146,11 +150,13 @@ export function NavBar() {
           <ThemeSwitch />
         </div>
 
-        {/* Mobile toggle */}
+        {/* Mobile toggle. Negative margin expands the tap target to a
+            comfortable thumb size without growing the visible label. */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="editorial-rubric text-muted transition-colors hover:text-foreground md:hidden"
+          className="editorial-rubric -m-3 p-3 text-muted transition-colors hover:text-foreground md:hidden"
           aria-expanded={menuOpen}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
         >
           {menuOpen ? "Close" : "Menu"}
         </button>
@@ -185,7 +191,7 @@ export function NavBar() {
                 <span className="editorial-rubric truncate text-muted">{user?.email}</span>
                 <button
                   onClick={handleLogout}
-                  className="editorial-rubric self-start text-muted transition-colors hover:text-foreground"
+                  className="editorial-rubric -mx-2 self-start px-2 py-2 text-muted transition-colors hover:text-foreground"
                 >
                   Logout
                 </button>
@@ -194,7 +200,7 @@ export function NavBar() {
               <Link
                 href="/login"
                 onClick={() => setMenuOpen(false)}
-                className="editorial-rubric self-start text-muted transition-colors hover:text-foreground"
+                className="editorial-rubric -mx-2 self-start px-2 py-2 text-muted transition-colors hover:text-foreground"
               >
                 Sign In
               </Link>

@@ -2,7 +2,7 @@
 
 import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button, Popover, RangeCalendar, Typography, cn } from "@heroui/react";
+import { Popover, RangeCalendar, cn } from "@heroui/react";
 import {
   CalendarDate,
   getLocalTimeZone,
@@ -189,15 +189,25 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
           </button>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        {/* Right-aligned once there's room; on a narrow phone it wraps onto
+            its own line, where pushing it to the far right would strand it
+            away from everything else in the row above. */}
+        <div className="flex items-center gap-3 sm:ml-auto">
           <Popover.Root isOpen={isRangeOpen} onOpenChange={setIsRangeOpen}>
             <Popover.Trigger>
               <button type="button" className="editorial-tag">
                 <span className="max-w-37.5 truncate">{rangeLabel}</span>
               </button>
             </Popover.Trigger>
+            {/*
+              Square, bordered chrome instead of HeroUI's rounded floating
+              panel — see the `.popover` override in globals.css, which adds
+              the border and collapses every rounded-* utility nested inside
+              (the calendar's day cells included) by zeroing the radius token
+              they all resolve through.
+            */}
             <Popover.Content placement="bottom end">
-              <Popover.Dialog className="flex flex-col gap-3 p-3">
+              <Popover.Dialog className="flex flex-col gap-3 p-4">
                 <RangeCalendar.Root
                   value={range}
                   onChange={setRange}
@@ -205,32 +215,55 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
                   maxValue={today(getLocalTimeZone())}
                 >
                   <RangeCalendar.Header>
-                    <RangeCalendar.NavButton slot="previous" />
-                    <RangeCalendar.Heading />
-                    <RangeCalendar.NavButton slot="next" />
+                    <RangeCalendar.NavButton
+                      slot="previous"
+                      className="text-muted! hover:text-foreground!"
+                    >
+                      &lsaquo;
+                    </RangeCalendar.NavButton>
+                    <RangeCalendar.Heading className="editorial-rubric! text-center! text-foreground!" />
+                    <RangeCalendar.NavButton
+                      slot="next"
+                      className="text-muted! hover:text-foreground!"
+                    >
+                      &rsaquo;
+                    </RangeCalendar.NavButton>
                   </RangeCalendar.Header>
                   <RangeCalendar.Grid>
                     <RangeCalendar.GridHeader>
-                      {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+                      {(day) => (
+                        <RangeCalendar.HeaderCell className="text-[0.625rem]! tracking-[0.08em]! uppercase!">
+                          {day}
+                        </RangeCalendar.HeaderCell>
+                      )}
                     </RangeCalendar.GridHeader>
                     <RangeCalendar.GridBody>
                       {(date) => <RangeCalendar.Cell date={date} />}
                     </RangeCalendar.GridBody>
                   </RangeCalendar.Grid>
                 </RangeCalendar.Root>
-                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                  <Typography.Paragraph size="xs" color="muted">
+                <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                  <span className="editorial-rubric text-muted">
                     {range
                       ? `${range.start.toString()} – ${range.end.toString()}`
                       : "Pick a start and end date"}
-                  </Typography.Paragraph>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onPress={clearRange}>
+                  </span>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      className="editorial-btn editorial-btn-ghost px-3! py-1.5!"
+                      onClick={clearRange}
+                    >
                       Clear
-                    </Button>
-                    <Button variant="primary" size="sm" onPress={applyRange} isDisabled={!range}>
+                    </button>
+                    <button
+                      type="button"
+                      className="editorial-btn px-3! py-1.5!"
+                      onClick={applyRange}
+                      disabled={!range}
+                    >
                       Apply
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </Popover.Dialog>

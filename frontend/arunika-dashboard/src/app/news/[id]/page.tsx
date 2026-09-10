@@ -35,7 +35,10 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
     <article className="mx-auto flex w-full max-w-3xl flex-col gap-10">
       <header className="editorial-reveal flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <Link href="/news" className="group inline-flex items-center gap-1.5 text-muted transition-colors hover:text-foreground">
+          <Link
+            href="/news"
+            className="group -m-2 inline-flex items-center gap-1.5 p-2 text-muted transition-colors hover:text-foreground"
+          >
             <span className="inline-block leading-none">&larr;</span>
             <Rubric>Back to the feed</Rubric>
           </Link>

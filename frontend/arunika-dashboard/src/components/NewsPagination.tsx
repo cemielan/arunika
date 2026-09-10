@@ -63,12 +63,12 @@ export function NewsPagination({
           <Link
             href={buildNewsHref(filters, page - 1)}
             rel="prev"
-            className="editorial-rubric text-muted transition-colors hover:text-foreground"
+            className="editorial-rubric -my-2 py-2 text-muted transition-colors hover:text-foreground"
           >
             Previous
           </Link>
         ) : (
-          <span className="editorial-rubric text-muted opacity-40">Previous</span>
+          <span className="editorial-rubric py-2 text-muted opacity-40">Previous</span>
         )}
 
         <div className="flex items-center gap-1">
@@ -81,7 +81,7 @@ export function NewsPagination({
               <span
                 key={p}
                 aria-current="page"
-                className="border-b border-foreground px-2 py-1 font-mono text-xs tabular-nums text-foreground"
+                className="border-b border-foreground px-2.5 py-2 font-mono text-xs tabular-nums text-foreground sm:px-2 sm:py-1"
               >
                 {p}
               </span>
@@ -89,7 +89,7 @@ export function NewsPagination({
               <Link
                 key={p}
                 href={buildNewsHref(filters, p)}
-                className="border-b border-transparent px-2 py-1 font-mono text-xs tabular-nums text-muted transition-colors hover:border-border hover:text-foreground"
+                className="border-b border-transparent px-2.5 py-2 font-mono text-xs tabular-nums text-muted transition-colors hover:border-border hover:text-foreground sm:px-2 sm:py-1"
               >
                 {p}
               </Link>
@@ -101,12 +101,12 @@ export function NewsPagination({
           <Link
             href={buildNewsHref(filters, page + 1)}
             rel="next"
-            className="editorial-rubric text-muted transition-colors hover:text-foreground"
+            className="editorial-rubric -my-2 py-2 text-muted transition-colors hover:text-foreground"
           >
             Next
           </Link>
         ) : (
-          <span className="editorial-rubric text-muted opacity-40">Next</span>
+          <span className="editorial-rubric py-2 text-muted opacity-40">Next</span>
         )}
       </div>
     </nav>

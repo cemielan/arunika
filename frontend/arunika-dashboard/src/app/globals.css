@@ -88,6 +88,19 @@ body {
 }
 
 /*
+ * A 3-line drop cap reads as a flourish in a wide column; in a narrow phone
+ * column it can dwarf a short paragraph. Two lines keeps the device present
+ * without it swallowing the opening sentence.
+ */
+@media (max-width: 640px) {
+  .editorial-dropcap::first-letter {
+    -webkit-initial-letter: 2;
+    initial-letter: 2;
+    font-size: 2.5em;
+  }
+}
+
+/*
  * Headline underline that draws in on hover. Uses background-size rather than
  * a border so it animates without shifting the text baseline.
  */
@@ -230,6 +243,17 @@ body {
 }
 
 /*
+ * Touch comfort. Desktop keeps the tight editorial density; a phone gets a
+ * little more room on the controls a thumb actually has to hit — category
+ * tags, the sort toggle, pagination — without changing how anything reads.
+ */
+@media (max-width: 640px) {
+  .editorial-tag {
+    padding: 0.5rem 0.875rem;
+  }
+}
+
+/*
  * Staggered entrance. Deliberately CSS rather than framer-motion: the briefing
  * is a server component, and a JS animation library here would mean shipping a
  * client boundary (and its hydration cost) purely for a fade-in.
@@ -280,4 +304,26 @@ body {
   .editorial-reveal {
     animation: none;
   }
+}
+
+/*
+ * Date-range popover (news feed filters). HeroUI's Popover and RangeCalendar
+ * ship a rounded, shadow-only floating panel with filled blue pill day cells
+ * — a generic date-picker look at odds with the site's bordered, square
+ * chrome everywhere else. `.popover` is used nowhere else in the app, so it's
+ * safe to reskin globally rather than overriding every usage site.
+ *
+ * The one-line trick that makes this tractable: every rounding inside the
+ * calendar (`rounded-3xl` on day cells, `rounded-xl` on the nav buttons, the
+ * range-boundary corner variants) is a Tailwind utility resolving through
+ * `--radius-*`, which are themselves all derived from a single `--radius`
+ * custom property. Custom properties resolve at the point of use against the
+ * nearest ancestor that sets them, so zeroing `--radius` here collapses every
+ * one of those nested roundings to square in one step — far more reliable
+ * than chasing each modifier selector (`data-selected`, `data-today`,
+ * `data-selection-start`, hover, disabled, …) with an `!important` override.
+ */
+.popover {
+  --radius: 0px;
+  border: 1px solid var(--border);
 }
