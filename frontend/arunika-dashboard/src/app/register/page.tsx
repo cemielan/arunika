@@ -13,11 +13,6 @@ import {
   type AuthFieldErrors,
 } from "@/lib/auth-validation";
 
-type SignupOutcome = {
-  email: string;
-  needsVerification: boolean;
-};
-
 export default function RegisterPage() {
   const router = useRouter();
   const { signUp, showNotification } = useAuth();
@@ -26,7 +21,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const [loading, setLoading] = useState(false);
-  const [signupOutcome, setSignupOutcome] = useState<SignupOutcome | null>(null);
   const modalState = useOverlayState();
 
   const validate = (): boolean => {
@@ -35,17 +29,26 @@ export default function RegisterPage() {
     return !hasAuthFieldErrors(errors);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    modalState.open();
+  };
 
+  const handleAccept = async () => {
+    modalState.close();
     setLoading(true);
     const normalizedEmail = normalizeEmail(email);
 
     try {
       const needsVerification = await signUp(normalizedEmail, password);
-      setSignupOutcome({ email: normalizedEmail, needsVerification });
-      modalState.open();
+      if (needsVerification) {
+        showNotification({ status: "success", title: "Account created", message: "Check your email for the confirmation link." });
+        router.push(`/verify?email=${encodeURIComponent(normalizedEmail)}`);
+      } else {
+        showNotification({ status: "success", title: "Account created", message: "Welcome to Arunika." });
+        router.push("/");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed";
       if (message.includes("sign in instead")) {
@@ -61,17 +64,6 @@ export default function RegisterPage() {
       showNotification({ status: "danger", title: "Sign up failed", message });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleContinue = () => {
-    modalState.close();
-    if (signupOutcome?.needsVerification) {
-      showNotification({ status: "success", title: "Account created", message: "Check your email for the confirmation link." });
-      router.push(`/verify?email=${encodeURIComponent(signupOutcome.email)}`);
-    } else {
-      showNotification({ status: "success", title: "Account created", message: "Welcome to Arunika." });
-      router.push("/");
     }
   };
 
@@ -132,44 +124,46 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      {signupOutcome && (
-        <Modal state={modalState}>
-          <Modal.Backdrop isDismissable={false} />
-          <Modal.Container size="sm">
-            {/*
-              Square corners, a hairline border and no shadow, overriding
-              HeroUI's rounded/elevated defaults so the dialog reads as the
-              same bordered panel as the rest of the site rather than a
-              generic app modal. The `!` suffixes are needed because the
-              base `.modal__dialog` rule sets these directly (not via a
-              Tailwind utility), so an unmarked override loses the cascade.
-            */}
-            <Modal.Dialog className="rounded-none! border! border-border! bg-surface! shadow-none!">
-              <Modal.Header>
-                <Rubric>Subscribe</Rubric>
-                <Modal.Heading className="editorial-display text-xl! font-semibold! text-foreground!">
-                  Daily email summary
-                </Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-3">
-                <p className="text-sm leading-relaxed text-foreground/90">
-                  Welcome to Arunika, {signupOutcome.email}.
-                </p>
-                <p className="text-sm leading-relaxed text-muted">
-                  We will use your email to send you the day&apos;s briefing summary every
-                  morning, shortly after it is generated. You can opt out of these emails at
-                  any time.
-                </p>
-              </Modal.Body>
-              <Modal.Footer>
-                <button type="button" className="editorial-btn" onClick={handleContinue}>
-                  Got it
-                </button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal>
-      )}
+      <Modal state={modalState}>
+        <Modal.Backdrop isDismissable={false} />
+        <Modal.Container size="sm">
+          {/*
+            Square corners, a hairline border and no shadow, overriding
+            HeroUI's rounded/elevated defaults so the dialog reads as the
+            same bordered panel as the rest of the site rather than a
+            generic app modal. The `!` suffixes are needed because the
+            base `.modal__dialog` rule sets these directly (not via a
+            Tailwind utility), so an unmarked override loses the cascade.
+          */}
+          <Modal.Dialog className="rounded-none! border! border-border! bg-surface! shadow-none!">
+            <Modal.Header>
+              <Rubric>Subscribe</Rubric>
+              <Modal.Heading className="editorial-display text-xl! font-semibold! text-foreground!">
+                Daily email summary
+              </Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="flex flex-col gap-3">
+              <p className="text-sm leading-relaxed text-foreground/90">
+                Creating account subscribes {normalizeEmail(email)} to the Arunika daily
+                briefing email.
+              </p>
+              <p className="text-sm leading-relaxed text-muted">
+                We will send today&apos;s market briefing summary to your inbox every
+                morning, shortly after it is generated. You can opt out at any time.
+                Cancel to go back without creating an account.
+              </p>
+            </Modal.Body>
+            <Modal.Footer className="gap-2">
+              <button type="button" className="editorial-btn-ghost" onClick={modalState.close}>
+                Cancel
+              </button>
+              <button type="button" className="editorial-btn" disabled={loading} onClick={() => void handleAccept()}>
+                {loading ? "Creating account…" : "Accept & create account"}
+              </button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal>
     </AuthShell>
   );
 }

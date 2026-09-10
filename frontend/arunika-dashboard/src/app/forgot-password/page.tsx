@@ -66,8 +66,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      kicker="Account recovery"
-      title="Forgot password"
+      kicker="Account Recovery"
+      title="Forgot Password"
       lede="Enter your email and we'll send you a reset link."
       footer={
         <>

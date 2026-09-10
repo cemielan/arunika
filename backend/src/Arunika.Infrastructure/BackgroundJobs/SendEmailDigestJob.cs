@@ -120,25 +120,25 @@ public class SendEmailDigestJob(
             <!DOCTYPE html>
             <html>
             <head><meta charset="utf-8"><style>
-              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; }
-              h1 { font-size: 22px; margin-bottom: 4px; }
-              .meta { color: #666; font-size: 13px; margin-bottom: 20px; }
-              .summary { background: #f6f6f6; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
-              .summary h2 { font-size: 16px; margin: 0 0 8px; }
+              body { font-family: Georgia, "Times New Roman", serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background: #ffffff; }
+              h1 { font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 600; margin-bottom: 4px; border-top: 2px solid #1a1a1a; padding-top: 12px; }
+              .meta { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #666; font-size: 11px; margin-bottom: 20px; }
+              .summary { border: 1px solid #ddd; padding: 16px; margin-bottom: 24px; }
+              .summary h2 { font-family: Georgia, "Times New Roman", serif; font-size: 16px; margin: 0 0 8px; }
               .summary p { font-size: 13px; line-height: 1.6; color: #333; margin: 0; }
-              .tag { display: inline-block; background: #e8e8e8; color: #444; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; margin-bottom: 8px; }
-              .tag-bullish { background: #dcfce7; color: #15803d; }
-              .tag-bearish { background: #fee2e2; color: #b91c1c; }
-              .tag-high { background: #fee2e2; color: #b91c1c; }
-              .tag-medium { background: #fef3c7; color: #b45309; }
-              .tag-low { background: #dcfce7; color: #15803d; }
-              .story { padding: 12px 0; border-bottom: 1px solid #eee; }
+              .tag { display: inline-block; border: 1px solid #999; color: #444; padding: 1px 7px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; margin-right: 4px; margin-bottom: 8px; }
+              .tag-bullish { border-color: #15803d; color: #15803d; }
+              .tag-bearish { border-color: #b91c1c; color: #b91c1c; }
+              .tag-high { border-color: #b91c1c; color: #b91c1c; }
+              .tag-medium { border-color: #b45309; color: #b45309; }
+              .tag-low { border-color: #15803d; color: #15803d; }
+              .story { padding: 12px 0; border-bottom: 1px solid #ddd; }
               .story:last-child { border-bottom: none; }
-              .story h3 { font-size: 15px; margin: 0 0 4px; }
+              .story h3 { font-family: Georgia, "Times New Roman", serif; font-size: 15px; margin: 0 0 4px; }
               .story h3 a { color: #1a1a1a; text-decoration: none; }
               .story p { font-size: 13px; color: #444; margin: 0; }
-              .cta { display: inline-block; background: #1a1a1a; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; margin: 8px 0 24px; }
-              .footer { margin-top: 24px; font-size: 12px; color: #999; }
+              .cta { display: inline-block; background: #1a1a1a; color: #ffffff; text-decoration: none; padding: 10px 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; font-weight: 600; margin: 8px 0 24px; }
+              .footer { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin-top: 24px; font-size: 12px; color: #999; }
             </style></head>
             <body>
             <h1>Arunika Daily Digest</h1>

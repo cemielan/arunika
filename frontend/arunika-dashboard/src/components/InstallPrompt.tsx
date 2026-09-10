@@ -90,7 +90,7 @@ export function InstallPrompt() {
     // The bottom offset adds the home-indicator safe area on top of the
     // usual gap, so the card clears it instead of sitting flush against —
     // or getting clipped by — the gesture bar in the installed PWA.
-    <div className="editorial-panel fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 w-[calc(100%-2rem)] max-w-sm bg-surface p-4 shadow-lg sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:left-6">
+    <div className="editorial-panel fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 w-[calc(100%-2rem)] max-w-sm bg-background/80 p-4 shadow-lg backdrop-blur supports-backdrop-filter:bg-background/60 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:left-6">
       <button
         onClick={dismiss}
         className="editorial-rubric absolute right-3 top-3 text-muted transition-colors hover:text-foreground"
