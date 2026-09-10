@@ -22,6 +22,51 @@ const RISK_TONE: Record<string, string> = {
   Low: "text-success",
 };
 
+// Mirrors BriefingController.TopStoryCount — the API sends the stories but not
+// the cap, and on a quiet window fewer than this arrive.
+const TOP_STORY_COUNT = 10;
+
+/**
+ * Readers arriving cold ask what a briefing is and where it comes from. The
+ * masthead lede answers both in a sentence; this disclosure carries the longer
+ * version for anyone who wants it, without spending a tour or an onboarding
+ * step on it. Native <details>, so the page stays a server component.
+ */
+function Colophon({ windowDays }: { windowDays: number }) {
+  return (
+    <details className="editorial-disclosure editorial-reveal -mt-6 sm:-mt-10">
+      <summary className="-my-2 inline-flex items-center gap-1.5 py-2 text-muted transition-colors hover:text-foreground">
+        <span className="editorial-disclosure-sign inline-block leading-none">+</span>
+        <Rubric>How this briefing is made</Rubric>
+      </summary>
+
+      <div className="mt-3 max-w-2xl border-l border-border pl-4 text-sm leading-relaxed text-muted">
+        <p>
+          <strong className="font-medium text-foreground">One.</strong> Arunika reads every
+          story that reached the{" "}
+          <Link href="/news" className="text-accent hover:underline">
+            news feed
+          </Link>{" "}
+          in the last {windowDays} days.
+        </p>
+        <p className="mt-2">
+          <strong className="font-medium text-foreground">Two.</strong> Each story is scored
+          0–100 for market impact, and the {TOP_STORY_COUNT} highest are kept.
+        </p>
+        <p className="mt-2">
+          <strong className="font-medium text-foreground">Three.</strong> AI writes the
+          summary at the top of the page and the &ldquo;Why it matters&rdquo; note under each
+          story.
+        </p>
+        <p className="mt-3">
+          The briefing is rebuilt every morning. The {windowDays}-day window rolls forward
+          with it, so a story stays in contention until it ages out.
+        </p>
+      </div>
+    </details>
+  );
+}
+
 /** Long-form dateline for the masthead, e.g. "Wednesday, 10 September 2026". */
 function formatMastheadDate(dateOnly: string): string {
   if (!dateOnly) return "";
@@ -45,10 +90,12 @@ export default async function Home() {
   const columns = rest.slice(0, 3);
   const remainder = rest.slice(3);
 
+  const windowDays = briefing.windowDays || 7;
+
   const windowNote =
     marketPulse.totalArticles > 0 && briefing.rangeStart && briefing.rangeEnd
       ? `${formatDateOnly(briefing.rangeStart)} – ${formatDateOnly(briefing.rangeEnd)}`
-      : `Last ${briefing.windowDays || 7} days`;
+      : `Last ${windowDays} days`;
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
@@ -56,8 +103,10 @@ export default async function Home() {
         kicker={formatMastheadDate(briefing.date) || "Today"}
         meta={`${marketPulse.totalArticles} stories · ${windowNote}`}
         title="Today's Briefing"
-        lede="The week's market-moving stories, read and ranked by impact score."
+        lede={`The ${TOP_STORY_COUNT} highest-impact stories from the last ${windowDays} days of the news feed, ranked and summarised by AI. Rebuilt every morning.`}
       />
+
+      <Colophon windowDays={windowDays} />
 
       {(briefing.executiveSummary || marketPulse.totalArticles > 0) && (
         <section className="editorial-reveal grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
