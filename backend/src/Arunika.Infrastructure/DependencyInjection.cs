@@ -37,12 +37,9 @@ public static class DependencyInjection
         services.Configure<SupabaseOptions>(configuration.GetSection(SupabaseOptions.SectionName));
 
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
-        services.AddSingleton(sp =>
-        {
-            var geminiOptions = sp.GetRequiredService<IOptions<GeminiOptions>>().Value;
-            // Flash-Lite: 30 RPM, 1000+ RPD. Use 25 RPM / 900 RPD for safety margin.
-            return new GeminiRateLimiter(maxCallsPerMinute: 25, maxCallsPerDay: 900);
-        });
+        // Singleton: the free-tier budget is per API key, so every enrichment
+        // worker has to spend from one shared set of counters.
+        services.AddSingleton<GeminiRateLimiter>();
         services.AddSingleton<GeminiCircuitBreaker>();
         services.AddSingleton<GeminiModelRotator>();
         services.AddScoped<GeminiAiEnrichmentService>();

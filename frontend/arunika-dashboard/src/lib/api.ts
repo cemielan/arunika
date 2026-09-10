@@ -86,6 +86,14 @@ export type TopStory = {
   title: string;
   impactScore: number;
   sectors: string[];
+  /** AI summary — the excerpt the briefing page runs under each headline. */
+  summary: string | null;
+  sentiment: string | null;
+  category: string | null;
+  source: string | null;
+  publishedAt: string | null;
+  /** AI rationale for the impact score, shown as "Why it matters" on the lead story. */
+  impactRationale: string | null;
 };
 
 export type MarketSentiment = "Bullish" | "Bearish" | "Neutral";
@@ -183,17 +191,44 @@ type RawMarketPulse = {
   confidence: number;
 };
 
+type RawTopStory = Partial<TopStory> & {
+  articleId: string;
+  title: string;
+  impactScore: number;
+};
+
 type RawBriefing = {
   date: string;
   rangeStart: string;
   rangeEnd: string;
   windowDays: number;
   marketPulse: RawMarketPulse;
-  topStories: TopStory[];
+  topStories: RawTopStory[];
   executiveSummary?: string;
   overallSentiment?: string;
   riskLevel?: string;
 };
+
+/**
+ * The analysis fields on a top story were added after the first release, so an
+ * older API build (or a stale CDN response) can omit them entirely. Normalise
+ * `undefined` to `null` here so the briefing page only has one empty case to
+ * render around.
+ */
+function normalizeTopStory(story: RawTopStory): TopStory {
+  return {
+    articleId: story.articleId,
+    title: story.title,
+    impactScore: story.impactScore,
+    sectors: story.sectors ?? [],
+    summary: story.summary ?? null,
+    sentiment: story.sentiment ?? null,
+    category: story.category ?? null,
+    source: story.source ?? null,
+    publishedAt: story.publishedAt ?? null,
+    impactRationale: story.impactRationale ?? null,
+  };
+}
 
 function emptyBriefing(date?: string): Briefing {
   return {
@@ -228,9 +263,10 @@ export const getBriefing = unstable_cache(
       return emptyBriefing(date);
     }
 
-    const { marketPulse, executiveSummary, overallSentiment, riskLevel, ...rest } = result.data;
+    const { marketPulse, topStories, executiveSummary, overallSentiment, riskLevel, ...rest } = result.data;
     return {
       ...rest,
+      topStories: (topStories ?? []).map(normalizeTopStory),
       executiveSummary,
       overallSentiment,
       riskLevel,

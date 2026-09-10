@@ -74,7 +74,7 @@ public class BriefingGenerationService(
             {
                 try
                 {
-                    await rateLimiter.WaitForSlotAsync(cancellationToken);
+                    await rateLimiter.WaitForSlotAsync(model, cancellationToken);
 
                     var response = await client.Models.GenerateContentAsync(
                         model: model,
@@ -96,6 +96,14 @@ public class BriefingGenerationService(
                         payload.ExecutiveSummary,
                         Enum.Parse<Sentiment>(payload.OverallSentiment, ignoreCase: true),
                         Enum.Parse<RiskLevel>(payload.RiskLevel, ignoreCase: true));
+                }
+                catch (GeminiModelExhaustedException ex)
+                {
+                    // Out of budget rather than broken — retrying the same
+                    // model cannot help, so fall through to the next one.
+                    lastException = ex;
+                    logger.LogDebug("Briefing generation skipped model {Model}: {Reason}", model, ex.Message);
+                    break;
                 }
                 catch (Exception ex)
                 {

@@ -52,11 +52,40 @@ public class GeminiOptions
     public int ArticlesPerRotation { get; set; } = 2;
 
     /// <summary>
-    /// Max Gemini requests per rolling 60s window, shared across ALL models.
-    /// Must stay below the tightest per-model RPM in the chain (5 RPM on the
-    /// Flash models); kept at 4 to leave headroom for retries.
+    /// Max Gemini requests per rolling 60s window, summed across ALL models.
+    /// This is a burst smoother on top of the per-model RPM budgets that
+    /// <see cref="GeminiRateLimiter"/> derives from <see cref="ModelQuotas"/>,
+    /// not a substitute for them — FetchNewsJob enqueues in bursts every 30
+    /// minutes and this keeps the whole chain from firing at once.
     /// </summary>
-    public int MaxRequestsPerMinute { get; set; } = 4;
+    public int MaxRequestsPerMinute { get; set; } = 8;
+
+    /// <summary>
+    /// Percentage of each published quota the pipeline is allowed to spend, so
+    /// it throttles itself before Google returns 429. 80 leaves the primary
+    /// Flash-Lite models at 12 RPM / 400 RPD of their 15 / 500 allowance.
+    /// </summary>
+    public int QuotaSafetyPercent { get; set; } = 80;
+
+    /// <summary>
+    /// Attempts per model before falling through to the next one. Kept low on
+    /// purpose: every attempt spends daily quota, and with a six-model chain a
+    /// generous retry count multiplies one bad article into dozens of requests.
+    /// </summary>
+    public int MaxAttemptsPerModel { get; set; } = 2;
+
+    /// <summary>
+    /// How long a model is parked after the API reports a quota breach for it.
+    /// Only ever applied to the offending model.
+    /// </summary>
+    public TimeSpan ModelQuotaCooldown { get; set; } = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// Longest a caller will block waiting for a per-minute slot before the
+    /// model is reported exhausted and the chain moves on. Bounded so an
+    /// enrichment worker is never parked indefinitely behind one model.
+    /// </summary>
+    public TimeSpan MaxSlotWait { get; set; } = TimeSpan.FromSeconds(90);
 }
 
 public sealed class ModelQuota

@@ -3,10 +3,166 @@
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-serif), ui-serif, Georgia, "Times New Roman", serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   transition: background-color 120ms linear, color 120ms linear;
+}
+
+/*
+ * Editorial layer — used by the briefing page only (src/app/page.tsx).
+ * These are the few things Tailwind utilities express badly: the serif display
+ * face, small-caps section labels, the masthead rules, and the drop cap. Every
+ * colour is taken from the existing theme tokens so the layout follows
+ * light/dark exactly like the rest of the app.
+ */
+
+.editorial-display {
+  font-family: var(--font-serif), ui-serif, Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+/* Small-caps rubric: "TODAY'S BRIEFING", "ALSO THIS WEEK", section kickers. */
+.editorial-rubric {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/*
+ * Section rule: label on the left, hairline filling the remaining width.
+ * A single element so headings can't drift out of alignment with their rule.
+ */
+.editorial-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.editorial-rule::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border, currentColor);
+  opacity: 0.5;
+}
+
+/* Heavier rule that opens the masthead. */
+.editorial-rule-strong {
+  border-top: 2px solid var(--foreground);
+  opacity: 0.85;
+}
+
+/*
+ * Drop cap on the executive summary. `initial-letter` is the correct property
+ * and is supported in Safari and Chromium; the float fallback keeps Firefox
+ * from rendering a plain first character.
+ */
+.editorial-dropcap::first-letter {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-weight: 700;
+  -webkit-initial-letter: 3;
+  initial-letter: 3;
+  float: left;
+  font-size: 3.25em;
+  line-height: 0.82;
+  padding-right: 0.09em;
+  padding-top: 0.06em;
+}
+
+@supports (initial-letter: 3) or (-webkit-initial-letter: 3) {
+  .editorial-dropcap::first-letter {
+    float: none;
+    font-size: inherit;
+    line-height: inherit;
+    padding-top: 0;
+  }
+}
+
+/*
+ * Headline underline that draws in on hover. Uses background-size rather than
+ * a border so it animates without shifting the text baseline.
+ */
+.editorial-link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .editorial-link-underline,
+.group:focus-visible .editorial-link-underline {
+  background-size: 100% 1px;
+}
+
+/* "Read" affordance arrow that slides on hover. */
+.editorial-arrow {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .editorial-arrow,
+.group:focus-visible .editorial-arrow {
+  transform: translateX(0.25rem);
+}
+
+/*
+ * Staggered entrance. Deliberately CSS rather than framer-motion: the briefing
+ * is a server component, and a JS animation library here would mean shipping a
+ * client boundary (and its hydration cost) purely for a fade-in.
+ */
+@keyframes editorial-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.editorial-reveal {
+  animation: editorial-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/*
+ * "Why it matters" disclosure, built on native <details> so it expands without
+ * JavaScript and keeps the button semantics screen readers expect.
+ */
+.editorial-disclosure > summary {
+  list-style: none;
+  cursor: var(--cursor-interactive, pointer);
+}
+
+.editorial-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editorial-disclosure > summary .editorial-disclosure-sign {
+  transition: transform 200ms ease;
+}
+
+.editorial-disclosure[open] > summary .editorial-disclosure-sign {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial-link-underline,
+  .editorial-arrow,
+  .editorial-disclosure > summary .editorial-disclosure-sign {
+    transition: none;
+  }
+
+  .editorial-reveal {
+    animation: none;
+  }
 }

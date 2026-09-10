@@ -27,7 +27,6 @@ public class GeminiAiEnrichmentService(
     ILogger<GeminiAiEnrichmentService> logger)
     : IAiEnrichmentService
 {
-    private const int MaxAttempts = 3;
     private const int MaxContentChars = 6000;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -55,11 +54,6 @@ public class GeminiAiEnrichmentService(
             throw new InvalidOperationException("Gemini API key is not configured.");
         }
 
-        if (rateLimiter.IsQuotaCoolingDown)
-        {
-            throw new InvalidOperationException("Gemini quota cooldown is active.");
-        }
-
         var client = new Client(apiKey: options.Value.ApiKey);
         var prompt = BuildPrompt(article);
         var config = new GenerateContentConfig
@@ -69,23 +63,40 @@ public class GeminiAiEnrichmentService(
             SafetySettings = SafetySettings
         };
 
-        var modelsToTry = new List<string> { modelRotator.GetNextModel() };
-        modelsToTry.AddRange(options.Value.FallbackModels.Where(m => m != modelsToTry[0]));
+        var maxAttempts = Math.Max(1, options.Value.MaxAttemptsPerModel);
+        var candidates = modelRotator.GetCandidates();
+
+        if (!rateLimiter.AnyAvailable(candidates))
+        {
+            // Fail fast rather than walk the chain: every model is either
+            // parked or out of daily budget, so the composite service should
+            // reach the next provider now, and RetryFailedEnrichmentJob can
+            // pick the article up once a rolling window frees.
+            throw new GeminiModelExhaustedException(candidates[0],
+                $"Every Gemini model is out of budget; skipping article {article.Id}.");
+        }
 
         Exception? lastException = null;
 
-        foreach (var model in modelsToTry)
+        foreach (var model in candidates)
         {
             if (!circuitBreaker.IsAvailable(model))
             {
-                logger.LogWarning("Gemini circuit breaker open for model {Model}; skipping.", model);
+                logger.LogDebug("Gemini circuit breaker open for model {Model}; skipping.", model);
                 continue;
             }
-            for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+
+            if (!rateLimiter.IsAvailable(model))
+            {
+                logger.LogDebug("Gemini model {Model} has no budget left; skipping.", model);
+                continue;
+            }
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
                 try
                 {
-                    await rateLimiter.WaitForSlotAsync(cancellationToken);
+                    await rateLimiter.WaitForSlotAsync(model, cancellationToken);
 
                     var response = await client.Models.GenerateContentAsync(
                         model: model,
@@ -104,47 +115,50 @@ public class GeminiAiEnrichmentService(
                     circuitBreaker.RecordSuccess(model);
                     return MapToResult(payload, model);
                 }
+                catch (GeminiModelExhaustedException ex)
+                {
+                    // Budget, not fault: don't retry it and don't hold it
+                    // against the model's health — just move down the chain.
+                    lastException = ex;
+                    logger.LogDebug("Gemini model {Model} unavailable for article {ArticleId}: {Reason}",
+                        model, article.Id, ex.Message);
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     lastException = ex;
+                    modelRotator.RecordFailure(model);
+                    circuitBreaker.RecordFailure(model);
 
                     if (IsQuotaExceeded(ex))
                     {
-                        rateLimiter.MarkQuotaCooldown(TimeSpan.FromHours(1));
-                        modelRotator.RecordFailure(model);
-                        circuitBreaker.RecordFailure(model);
-                        throw new InvalidOperationException(
-                            "Gemini quota exceeded; entering cooldown before the next attempt.", ex);
-                    }
-
-                    var isRetryable = IsRetryable(ex);
-
-                    if (!isRetryable)
-                    {
-                        logger.LogWarning(ex,
-                            "Gemini enrichment failed with a non-retryable error for model {Model} and article {ArticleId}; trying next fallback.",
+                        // Park this model only. A shared cooldown used to take
+                        // the entire Gemini provider offline whenever one of
+                        // the 20-RPD Flash models ran dry.
+                        rateLimiter.MarkModelCooldown(model, options.Value.ModelQuotaCooldown);
+                        logger.LogWarning(
+                            "Gemini reported a quota breach on model {Model} for article {ArticleId}; trying the next model.",
                             model, article.Id);
-                        modelRotator.RecordFailure(model);
-                        circuitBreaker.RecordFailure(model);
                         break;
                     }
 
-                    if (attempt < MaxAttempts)
-                    {
-                        var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
-                        logger.LogWarning(ex,
-                            "Gemini enrichment attempt {Attempt}/{MaxAttempts} with model {Model} failed for article {ArticleId}; retrying in {Delay}.",
-                            attempt, MaxAttempts, model, article.Id, delay);
-                        await Task.Delay(delay, cancellationToken);
-                    }
-                    else
+                    if (!IsRetryable(ex) || attempt == maxAttempts)
                     {
                         logger.LogWarning(ex,
-                            "Gemini enrichment exhausted {MaxAttempts} attempts with model {Model} for article {ArticleId}; trying next fallback.",
-                            MaxAttempts, model, article.Id);
-                        modelRotator.RecordFailure(model);
-                        circuitBreaker.RecordFailure(model);
+                            "Gemini enrichment failed on model {Model} for article {ArticleId} after {Attempt} attempt(s); trying the next model.",
+                            model, article.Id, attempt);
+                        break;
                     }
+
+                    var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    logger.LogWarning(ex,
+                        "Gemini enrichment attempt {Attempt}/{MaxAttempts} with model {Model} failed for article {ArticleId}; retrying in {Delay}.",
+                        attempt, maxAttempts, model, article.Id, delay);
+                    await Task.Delay(delay, cancellationToken);
                 }
             }
         }
@@ -153,9 +167,45 @@ public class GeminiAiEnrichmentService(
             $"Gemini enrichment failed for article {article.Id} after exhausting all models.", lastException);
     }
 
+    /// <summary>
+    /// Only genuinely transient faults are worth a second attempt. Retrying a
+    /// refusal, a malformed response, or an unsupported model just burns the
+    /// model's daily quota and starves the articles behind it in the queue.
+    /// </summary>
     private static bool IsRetryable(Exception ex)
     {
-        return !IsUnsupportedModel(ex);
+        if (IsUnsupportedModel(ex) || IsQuotaExceeded(ex))
+        {
+            return false;
+        }
+
+        // A schema violation is a property of the prompt, not of the moment.
+        if (ex is JsonException)
+        {
+            return false;
+        }
+
+        // A dropped connection or a timeout usually clears on its own.
+        if (ex is HttpRequestException or TaskCanceledException)
+        {
+            return true;
+        }
+
+        var message = ex.ToString();
+
+        // Content the model declined to answer comes back as an empty response
+        // and will come back empty again on a retry.
+        if (message.Contains("blockReason=", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("finishReason=SAFETY", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("finishReason=RECITATION", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("API key not valid", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("PERMISSION_DENIED", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("INVALID_ARGUMENT", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static bool IsQuotaExceeded(Exception ex)

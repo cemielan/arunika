@@ -92,7 +92,16 @@ public class BriefingController(
                 article.Id,
                 article.Title,
                 article.Analysis!.ImpactScore,
-                article.SectorImpacts.Select(impact => impact.Sector?.Name ?? string.Empty).ToList()))
+                article.SectorImpacts
+                    .Select(impact => impact.Sector?.Name ?? string.Empty)
+                    .Where(name => name.Length > 0)
+                    .ToList(),
+                article.Analysis!.Summary,
+                article.Analysis!.Sentiment.ToString(),
+                article.Analysis!.Category?.Name,
+                article.Source?.Name,
+                article.PublishedAt,
+                article.Analysis!.ImpactRationale))
             .ToList();
 
         var marketPulse = BuildMarketPulse(articles);

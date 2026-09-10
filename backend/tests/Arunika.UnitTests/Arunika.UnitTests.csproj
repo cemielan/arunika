@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Arunika.Domain\Arunika.Domain.csproj" />
     <ProjectReference Include="..\..\src\Arunika.Application\Arunika.Application.csproj" />
+    <ProjectReference Include="..\..\src\Arunika.Infrastructure\Arunika.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

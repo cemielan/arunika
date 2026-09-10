@@ -127,6 +127,8 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Where(a => a.DuplicateOfId == null && a.Analysis != null)
             .Where(a => a.PublishedAt >= from && a.PublishedAt < to)
             .Include(a => a.Analysis)
+                .ThenInclude(analysis => analysis!.Category)
+            .Include(a => a.Source)
             .Include(a => a.SectorImpacts)
                 .ThenInclude(impact => impact.Sector)
             .OrderByDescending(a => a.Analysis!.ImpactScore)

@@ -20,7 +20,23 @@ public sealed record BriefingResponseDto(
     string? OverallSentiment = null,
     string? RiskLevel = null);
 
-public sealed record TopStoryDto(Guid ArticleId, string Title, int ImpactScore, IReadOnlyList<string> Sectors);
+/// <summary>
+/// One ranked story in the briefing. Carries the analysis fields the briefing
+/// page needs to render an editorial excerpt — summary, sentiment, category,
+/// source and publication time — all of which are already loaded alongside the
+/// impact score, so exposing them costs no extra query.
+/// </summary>
+public sealed record TopStoryDto(
+    Guid ArticleId,
+    string Title,
+    int ImpactScore,
+    IReadOnlyList<string> Sectors,
+    string? Summary = null,
+    string? Sentiment = null,
+    string? Category = null,
+    string? Source = null,
+    DateTimeOffset? PublishedAt = null,
+    string? ImpactRationale = null);
 
 /// <summary>
 /// Aggregate sentiment/impact conclusion across every enriched, non-duplicate

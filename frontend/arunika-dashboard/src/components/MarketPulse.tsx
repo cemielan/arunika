@@ -1,4 +1,3 @@
-import { Card, Chip, Typography } from "@heroui/react";
 import type { MarketPulse as MarketPulseData } from "@/lib/api";
 import { SENTIMENT_META } from "@/components/badges";
 
@@ -12,7 +11,12 @@ const CONCLUSION_COPY: Record<MarketPulseData["sentiment"], string> = {
   Neutral: "No clear direction yet — bullish and bearish stories are roughly balanced this week.",
 };
 
-/** Dashboard hero: overall Bullish / Bearish / Neutral conclusion for the briefing window, with a legend breakdown. */
+/**
+ * The briefing's standing sidebar: one overall Bullish / Bearish / Neutral
+ * conclusion for the window, the average impact, and the split it was drawn
+ * from. Styled as a boxed rail rather than a dashboard card so it reads as a
+ * sidebar beside the lede.
+ */
 export function MarketPulse({ pulse }: MarketPulseProps) {
   const meta = SENTIMENT_META[pulse.sentiment];
   const { Icon } = meta;
@@ -23,94 +27,72 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
     { key: "Bearish", count: pulse.bearishCount },
   ];
 
+  const tone =
+    meta.color === "success" ? "text-success" : meta.color === "danger" ? "text-danger" : "text-foreground";
+
   return (
-    <Card variant="default" className="gap-3! p-4! sm:gap-6! sm:p-6!">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div
-            className={
-              "flex size-10 shrink-0 items-center justify-center rounded-2xl sm:size-14 " +
-              (meta.color === "success"
-                ? "bg-success/15 text-success"
-                : meta.color === "danger"
-                  ? "bg-danger/15 text-danger"
-                  : "bg-default text-muted")
-            }
-          >
-            <Icon className="size-5 sm:size-7" />
+    <aside className="flex flex-col gap-5 border border-border bg-surface-secondary/40 p-5">
+      <div className="editorial-rule">
+        <span className="editorial-rubric text-muted">Market pulse</span>
+      </div>
+
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className={`flex items-center gap-2 ${tone}`}>
+            <Icon className="size-6" />
+            <span className="editorial-display text-3xl">{meta.label}</span>
           </div>
-          <div className="flex flex-col">
-            <Typography.Paragraph size="xs" color="muted" className="uppercase tracking-wide">
-              This week&apos;s conclusion
-            </Typography.Paragraph>
-            <div className="flex items-center gap-2">
-              <Typography.Heading level={2} className="text-xl sm:text-2xl">
-                {meta.label}
-              </Typography.Heading>
-              <Chip color={meta.color} variant="soft" size="sm">
-                {pulse.confidence}%
-              </Chip>
-            </div>
-          </div>
+          <p className="editorial-rubric mt-2 text-muted">
+            {pulse.confidence}% of {pulse.totalArticles} stories
+          </p>
         </div>
-        <div className="flex flex-col items-end gap-0">
-          <Typography.Paragraph size="xs" color="muted">
-            Avg. impact
-          </Typography.Paragraph>
-          <Typography.Heading level={3} className="text-xl sm:text-3xl">
+
+        <div className="text-right">
+          <p className="editorial-display text-3xl text-foreground tabular-nums">
             {pulse.averageImpact}
-          </Typography.Heading>
+          </p>
+          <p className="editorial-rubric mt-1 text-muted">Avg. impact</p>
         </div>
       </div>
 
-      <Typography.Paragraph size="sm" color="muted" className="hidden sm:block max-w-md">
-        {CONCLUSION_COPY[pulse.sentiment]}
-      </Typography.Paragraph>
-
-      <div className="flex items-center gap-2">
-        <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-surface-secondary">
-          {rows.map((row) => (
-            <div
-              key={row.key}
-              className={
-                row.key === "Bullish"
-                  ? "bg-success"
-                  : row.key === "Bearish"
-                    ? "bg-danger"
-                    : "bg-default"
-              }
-              style={{
-                width: pulse.totalArticles > 0 ? `${(row.count / pulse.totalArticles) * 100}%` : 0,
-              }}
-            />
-          ))}
-        </div>
-        <Typography.Paragraph size="xs" color="muted" className="shrink-0">
-          {pulse.totalArticles} stories
-        </Typography.Paragraph>
+      {/*
+        Stacked split of the same window. Segments are separated by a 2px gap in
+        the surface colour so neighbouring fills stay individually readable
+        instead of merging into one band.
+      */}
+      <div className="flex h-2 gap-0.5" role="img" aria-label={`${pulse.bullishCount} bullish, ${pulse.neutralCount} neutral, ${pulse.bearishCount} bearish stories`}>
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className={
+              "h-full first:rounded-l-full last:rounded-r-full " +
+              (row.key === "Bullish" ? "bg-success" : row.key === "Bearish" ? "bg-danger" : "bg-default")
+            }
+            style={{
+              width: pulse.totalArticles > 0 ? `${(row.count / pulse.totalArticles) * 100}%` : "0%",
+            }}
+          />
+        ))}
       </div>
 
-      <div className="flex gap-3">
+      <dl className="flex flex-col gap-2">
         {rows.map((row) => {
           const rowMeta = SENTIMENT_META[row.key];
           const RowIcon = rowMeta.Icon;
+          const rowTone =
+            row.key === "Bullish" ? "text-success" : row.key === "Bearish" ? "text-danger" : "text-muted";
+
           return (
-            <div key={row.key} className="flex items-center gap-1 text-xs text-muted sm:text-sm">
-              <RowIcon
-                className={
-                  row.key === "Bullish"
-                    ? "size-3 text-success sm:size-3.5"
-                    : row.key === "Bearish"
-                      ? "size-3 text-danger sm:size-3.5"
-                      : "size-3 text-muted sm:size-3.5"
-                }
-              />
-              <span className="font-medium text-foreground">{row.count}</span>
-              <span className="hidden sm:inline">{rowMeta.label}</span>
+            <div key={row.key} className="flex items-center gap-2 text-sm">
+              <RowIcon className={`size-3.5 shrink-0 ${rowTone}`} />
+              <dt className="editorial-rubric text-muted">{rowMeta.label}</dt>
+              <dd className="ml-auto font-mono text-xs tabular-nums text-foreground">{row.count}</dd>
             </div>
           );
         })}
-      </div>
-    </Card>
+      </dl>
+
+      <p className="text-sm leading-relaxed text-muted">{CONCLUSION_COPY[pulse.sentiment]}</p>
+    </aside>
   );
 }

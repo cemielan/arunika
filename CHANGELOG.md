@@ -22,8 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI (build + test) + CD (Vercel + Render)
 - Comprehensive documentation: README, DESIGN, TODO, CONTRIBUTING, SECURITY
 
+- Admin diagnostics endpoint `GET /v1/admin/ai/budget` reporting remaining Gemini
+  free-tier budget, cooldowns and success/failure counts per model
+- Briefing top stories now carry summary, sentiment, category, source,
+  publication time and impact rationale, so the briefing page can run excerpts
+
 ### Changed
-- N/A (initial release)
+- Briefing page redesigned as a newsletter issue: masthead, drop-cap lede with a
+  market-pulse rail, a lead story, a three-column grid and a ranked tail.
+  Headlines use a Playfair Display display face; body copy stays on Geist.
+  Hover states, the staggered entrance and the "Why it matters" disclosures are
+  CSS and native `<details>`, so the page remains a server component.
+- Gemini free-tier budget is now tracked per model (RPM *and* RPD) from
+  `Gemini:ModelQuotas`, derated by `Gemini:QuotaSafetyPercent`, instead of a
+  single shared counter
 
 ### Deprecated
 - N/A
@@ -32,7 +44,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - N/A
 
 ### Fixed
-- N/A
+- Gemini model rotation never actually rotated — `GetNextModel` always returned
+  the primary model, so one model absorbed the whole enrichment load and
+  exceeded its own RPM while the rest of the chain sat idle
+- `Gemini:MaxRequestsPerMinute`, `ArticlesPerRotation` and `ModelQuotas` were
+  configured but never read; the rate limiter was constructed with hardcoded
+  limits in `DependencyInjection`
+- A quota breach on any single model tripped a one-hour cooldown across the
+  whole Gemini provider; it now parks only the offending model
+- Enrichment could block a Hangfire worker for up to 24 hours waiting on an
+  exhausted daily window; waits are now bounded and fall through to the next model
+- Retry amplification: every error was treated as retryable across 3 attempts ×
+  6 models, so one bad article could burn dozens of requests. Non-transient
+  failures (safety blocks, schema violations, auth errors) no longer retry
 
 ### Security
 - N/A
