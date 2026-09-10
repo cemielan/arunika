@@ -34,10 +34,9 @@ const TOP_STORY_COUNT = 10;
  */
 function Colophon({ windowDays }: { windowDays: number }) {
   return (
-    <details className="editorial-disclosure editorial-reveal editorial-panel-filled border border-border border-l-2 border-l-accent px-5 py-4 sm:px-6 sm:py-5">
+    <details className="editorial-disclosure editorial-reveal editorial-panel-filled border border-border border-l-2 border-l-accent px-5 py-2 sm:px-6 sm:py-5">
       <summary className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <Rubric className="text-accent!">New here?</Rubric>
-        <span className="flex-1 text-[0.9375rem] text-foreground transition-colors hover:text-accent sm:text-base">
+        <span className="flex-1 text-[0.9375rem] font-medium text-foreground transition-colors hover:text-accent sm:text-base">
           How this briefing is made
         </span>
         <span className="editorial-disclosure-sign inline-block leading-none text-muted">+</span>
