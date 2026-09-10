@@ -3,7 +3,7 @@
 #
 # Chosen hosts (not Azure — see repo memory / design doc §16 "open decisions"):
 #   - Frontend (Next.js):        Vercel
-#   - Backend (ASP.NET Core API, Postgres, Redis): Render
+#   - Backend (ASP.NET Core API, Postgres): Render
 #
 # Required repository/environment secrets before this workflow can actually
 # deploy anything (until then, each job logs a warning and skips its deploy

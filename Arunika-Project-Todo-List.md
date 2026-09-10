@@ -12,7 +12,7 @@ Check items off as you go — nothing here assumes prior setup.
 2. [ ] Create the GitHub repo and push an empty solution.
 3. [ ] Get API keys: one AI provider (OpenAI or Anthropic) and one news/market
    data source (see Phase 0).
-4. [ ] Get `docker-compose up` running Postgres + Redis locally.
+4. [ ] Get `docker-compose up` running Postgres locally.
 5. [ ] Define the `Article` and `ArticleAnalysis` entities and run your first
    EF Core migration.
 6. [ ] Pull 10 real articles from one source into the database (no AI yet).
@@ -55,8 +55,10 @@ Everything below is the same plan broken out in full.
   Application; Application → Domain.
 - [x] `npx create-next-app` for `frontend/arunika-dashboard` (TypeScript,
   Tailwind, App Router).
-- [x] Write `docker-compose.yml` for Postgres 16 + Redis 7 (see design doc §12);
-  confirm `docker-compose up` works and you can connect with a DB client.
+- [x] Write `docker-compose.yml` for Postgres 16 (see design doc §12); confirm
+  `docker-compose up` works and you can connect with a DB client. A Redis 7
+  service was included at first and removed later: nothing in the backend ever
+  connected to it. See design doc §9 for what caches what instead.
 - [x] Set up secrets: `dotnet user-secrets init` in `Arunika.Api`; add a
   `.env.local` (git-ignored) for the frontend.
 - [x] Add Swagger/OpenAPI to `Arunika.Api`; confirm `/swagger` loads on an empty
@@ -150,8 +152,8 @@ Everything below is the same plan broken out in full.
   "trust the model."
 - [x] Manual QA pass through the dashboard on a real day's news.
 - [ ] Provision hosting (decided against Azure — see design doc §16): Vercel
-  project for the frontend, Render web service + managed PostgreSQL + managed
-  Redis for the backend.
+  project for the frontend, Render web service + managed PostgreSQL for the
+  backend.
 - [x] Add the GitHub Actions CD workflow: deploy to staging on merge to `main`,
   to production on a tagged release (`.github/workflows/cd.yml`, targets
   Vercel + Render — deploy steps skip with a warning until the corresponding

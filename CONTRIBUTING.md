@@ -91,7 +91,7 @@ npm run build
 |---------|----------------|---------------------|
 | `Arunika.Domain` | Entities, enums, domain events | None (stdlib only) |
 | `Arunika.Application` | Interfaces, DTOs, use cases, validators | Domain, MediatR, FluentValidation |
-| `Arunika.Infrastructure` | EF Core, AI clients, fetchers, Hangfire, Email | Application, EF Core, Gemini, Redis, etc. |
+| `Arunika.Infrastructure` | EF Core, AI clients, fetchers, Hangfire, Email | Application, EF Core, Gemini, etc. |
 | `Arunika.Api` | Controllers, middleware, DI, Swagger | Application, Infrastructure |
 
 ### Frontend (TypeScript / Next.js 16)

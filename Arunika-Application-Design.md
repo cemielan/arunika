@@ -50,7 +50,6 @@ flowchart TB
 
     subgraph Data["Data layer"]
         PG[(PostgreSQL)]
-        Redis[(Redis cache)]
     end
 
     subgraph Serve["Serving layer"]
@@ -70,7 +69,6 @@ flowchart TB
     Dedup --> Pipeline
     Pipeline --> PG
     PG <--> API
-    Redis <--> API
     API --> Dash
     API --> Dev
     Scheduler -.triggers.-> Collector
@@ -85,7 +83,7 @@ flowchart TB
 | Ingestion | Pull articles from RSS/APIs on a schedule, normalize into a common shape | Hangfire recurring job, `HttpClient` / feed readers |
 | Deduplication | Detect exact and near-duplicate stories before they reach the AI step | Hash + title-similarity check |
 | AI Enrichment | One structured call per unique article producing all derived fields | OpenAI/Claude structured outputs |
-| Data layer | Durable storage + hot-path cache | PostgreSQL, Redis |
+| Data layer | Durable storage; derived results are materialized rather than cached separately | PostgreSQL |
 | Serving | Public/authenticated REST API, rate limiting, versioning | ASP.NET Core Web API |
 | Consumers | Dashboard for end users, REST API for third-party developers | Next.js, API keys |
 | Orchestration | Cron-like scheduling for every recurring job in the system | Hangfire |
@@ -93,7 +91,7 @@ flowchart TB
 **Why Clean Architecture at the code level:** Domain (entities, enums) has zero
 external dependencies; Application defines use-case interfaces (`IArticleRepository`,
 `INewsFetcher`, `IAiEnrichmentService`); Infrastructure implements them (EF Core,
-OpenAI client, RSS parsers, Redis); API is a thin layer of controllers and
+AI clients, RSS parsers); API is a thin layer of controllers and
 middleware. This means swapping OpenAI for Claude, or PostgreSQL for another store,
 touches Infrastructure only.
 
@@ -108,7 +106,6 @@ sequenceDiagram
     participant Ddp as Dedup
     participant AI as AI Pipeline
     participant DB as PostgreSQL
-    participant Cache as Redis
     participant API as REST API
 
     Src->>Col: New article published
@@ -121,10 +118,8 @@ sequenceDiagram
         Ddp->>AI: Send for enrichment
         AI->>AI: One structured-output call
         AI->>DB: Store summary, sentiment, impact,<br/>sectors, keywords
-        DB->>Cache: Invalidate trending/sector caches
     end
-    API->>Cache: Read hot data (briefing, trending)
-    API->>DB: Read cold data (article detail, history)
+    API->>DB: Read briefing, feed, article detail, history
 ```
 
 Duplicates are detected **before** the AI call, not after — this is the single
@@ -536,17 +531,28 @@ The Hangfire dashboard doubles as an operational view during V1 — worth exposi
 
 ---
 
-## 9. Caching strategy (Redis)
+## 9. Caching strategy
 
-| Key | Contents | Invalidation |
+There is no cache tier. This section originally specified Redis for the briefing,
+trending keywords, sector aggregates, and rate-limit counters; the service was
+declared in `docker-compose.yml` but nothing in the backend ever connected to it,
+and it has been removed rather than left as a component the diagrams claim exists.
+Each of the four things it was meant to hold is handled somewhere cheaper:
+
+| What | Where it lives now | Invalidation |
 |---|---|---|
-| `briefing:{date}` | Rendered daily briefing | Regenerated once/day, or on manual refresh |
-| `trending:current` | Trending keyword list | Every 15 min (RecalculateTrendingJob) |
-| `sector-sentiment:{range}` | Aggregate sentiment by sector | On new enrichment completing |
-| `ratelimit:{apiKey}` | Rolling request count | Sliding window, per-key TTL |
+| Daily briefing | A `briefings` row written by `GenerateDailyBriefingJob`; `BriefingController` reads it and generates on demand only for today, on a miss | Regenerated once a day; the row for a date is the cache |
+| Sector aggregates | Computed per request from the same 7-day window as the briefing | None — the query is bounded by the window |
+| Trending keywords | Not built — `GET /v1/trending` (§7) and `RecalculateTrendingJob` (§8) are still specification only | — |
+| Rate-limit counters | In-process fixed window, partitioned by client IP (`Arunika.Api.RateLimiting`) | Window expiry |
+| Rendered pages | Next.js `unstable_cache` in the dashboard's API client | Per its own TTL |
 
-Everything else (article detail, historical queries) reads straight from
-PostgreSQL — it's not hot enough to justify cache invalidation complexity at V1.
+The read paths that would justify a distributed cache do not exist yet: the feed
+and article detail are indexed Postgres queries against a table pruned by
+`CleanupOldArticlesJob`, and the API runs as a single instance, so an in-process
+window is sufficient for rate limiting. Redis becomes worth reintroducing at the
+point the API scales past one instance — rate-limit counters stop being correct
+first, since each instance would then keep its own.
 
 ---
 
@@ -594,7 +600,7 @@ arunika/
 │   ├── src/
 │   │   ├── Arunika.Domain/          # Entities, enums — no external deps
 │   │   ├── Arunika.Application/     # Use-case interfaces, DTOs, validation
-│   │   ├── Arunika.Infrastructure/  # EF Core, AI client, fetchers, Redis, Hangfire jobs
+│   │   ├── Arunika.Infrastructure/  # EF Core, AI clients, fetchers, Hangfire jobs
 │   │   └── Arunika.Api/             # Controllers, middleware, Program.cs, Swagger
 │   ├── tests/
 │   │   ├── Arunika.UnitTests/
@@ -602,7 +608,7 @@ arunika/
 │   └── Arunika.sln
 ├── frontend/
 │   └── arunika-dashboard/           # Next.js app
-├── docker-compose.yml               # Postgres + Redis for local dev
+├── docker-compose.yml               # Postgres for local dev
 ├── .github/workflows/
 │   ├── ci.yml
 │   └── cd.yml
@@ -623,9 +629,6 @@ services:
       POSTGRES_PASSWORD: devpassword
     ports: ["5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
-  redis:
-    image: redis:7
-    ports: ["6379:6379"]
 volumes:
   pgdata:
 ```
@@ -656,11 +659,10 @@ volumes:
 | Scheduler | Hangfire | Dashboard doubles as ops view |
 | AI | OpenAI GPT-5-series **or** Claude Sonnet 5 / Haiku 4.5 | Provider-agnostic via `IAiEnrichmentService` |
 | News/market data | RSS + Finnhub / Financial Modeling Prep / Alpha Vantage (pick 1–2 to start) | See §6 |
-| Cache | Redis 7 | |
 | Frontend | React + Next.js (App Router) | |
 | Auth | JWT (users) + API keys (developers) | |
 | API docs | Swagger / OpenAPI | |
-| Deployment | Azure App Service / Container Apps, Azure Database for PostgreSQL, Azure Cache for Redis | |
+| Deployment | Azure App Service / Container Apps, Azure Database for PostgreSQL | |
 | CI/CD | GitHub Actions | |
 | Logging | Serilog + Application Insights | |
 

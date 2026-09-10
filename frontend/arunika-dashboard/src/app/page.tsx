@@ -71,7 +71,7 @@ function Colophon({ windowDays }: { windowDays: number }) {
               scored 0–100 for market impact, and the {TOP_STORY_COUNT} highest are kept.
             </p>
             <p className="mt-2">
-              <strong className="font-medium text-foreground">Three -</strong> AI writes the
+              <strong className="font-medium text-foreground">Three -</strong>  AI writes the
               summary at the top of the page and the &ldquo;Why it matters&rdquo; note under
               each story.
             </p>

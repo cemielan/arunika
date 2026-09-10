@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REST API v1: news, articles, briefing, sectors, sentiment, trending endpoints
 - JWT authentication (register, login, refresh) + API key infrastructure
 - Next.js 16 dashboard: Briefing, News Feed, Article Detail, Sector Overview, Auth pages
-- Docker Compose for local Postgres + Redis
+- Docker Compose for local Postgres
 - GitHub Actions CI (build + test) + CD (Vercel + Render)
 - Comprehensive documentation: README, DESIGN, TODO, CONTRIBUTING, SECURITY
 

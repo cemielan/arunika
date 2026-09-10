@@ -10,7 +10,6 @@ Arunika ingests news from multiple sources and transforms it into structured, de
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)](https://redis.io/)
 
 ---
 
@@ -34,7 +33,6 @@ flowchart TB
 
     subgraph Data["Data Layer"]
         PG[(PostgreSQL 16)]
-        Redis[(Redis 7)]
     end
 
     subgraph Serve["API Layer"]
@@ -54,7 +52,6 @@ flowchart TB
     Dedup --> Pipeline
     Pipeline --> PG
     PG <--> API
-    Redis <--> API
     API --> Dash
     API --> Dev
     Scheduler -.-> Collector
@@ -94,7 +91,6 @@ fallback. Full rationale and band anchors are in
 |-------|------------|
 | **Backend API** | ASP.NET Core 10, Clean Architecture |
 | **Database** | PostgreSQL 16 + EF Core 10 |
-| **Cache** | Redis 7 |
 | **Scheduler** | Hangfire |
 | **AI Enrichment** | Google Gemini (structured output) |
 | **News Sources** | RSS + Financial Modeling Prep |
@@ -121,7 +117,7 @@ fallback. Full rationale and band anchors are in
 git clone https://github.com/Kadmiel/arunika.git
 cd arunika
 
-# Start PostgreSQL + Redis
+# Start PostgreSQL
 docker-compose up -d
 ```
 
@@ -202,7 +198,7 @@ arunika/
 │       │   └── lib/                 # Utilities, API client, auth
 │       └── public/
 ├── supabase/                        # Edge functions for email
-├── docker-compose.yml               # Postgres + Redis for local dev
+├── docker-compose.yml               # Postgres for local dev
 ├── .github/workflows/
 │   ├── ci.yml                       # Build + test on PR/push
 │   └── cd.yml                       # Deploy to Vercel + Render
@@ -287,11 +283,10 @@ npm run lint
 ### Backend → Render (Docker)
 
 1. Create a **PostgreSQL** database on Render
-2. Create a **Redis** instance (optional for V1)
-3. Create a **Web Service** from this repo:
+2. Create a **Web Service** from this repo:
    - Root Directory: `backend`
    - Runtime: `Docker` (uses `backend/Dockerfile`)
-4. Set environment variables:
+3. Set environment variables:
    | Key | Value |
    |-----|-------|
    | `ConnectionStrings__DefaultConnection` | Render Postgres connection string |

@@ -119,7 +119,6 @@ Output:
   ORM                 Entity Framework Core
   Scheduler           Hangfire
   AI                  Google Gemini API
-  Cache               Redis
   Frontend            React + Next.js
   Authentication      JWT
   API Documentation   Swagger/OpenAPI

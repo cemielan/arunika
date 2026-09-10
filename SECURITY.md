@@ -112,7 +112,7 @@ const securityHeaders = [
 |------|--------|------------|
 | AI prompt injection | ⚠️ Monitored | Structured output schema; input length limits |
 | News content XSS | ⚠️ Monitored | Sanitization on ingest; React auto-escapes |
-| Rate limit bypass | ✅ Mitigated | Per-key + IP fallback; Redis-backed |
+| Rate limit bypass | ✅ Mitigated | Per-IP fixed window, in-process (`Arunika.Api.RateLimiting`); `X-Forwarded-For` preferred behind the proxy |
 | Token replay | ✅ Mitigated | Short access token; refresh rotation |
 
 ---
