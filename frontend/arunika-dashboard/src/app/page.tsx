@@ -40,7 +40,11 @@ const TOP_STORY_COUNT = 10;
  */
 function Colophon({ windowDays }: { windowDays: number }) {
   return (
-    <div className="editorial-reveal -mt-6 sm:-mt-10">
+    // z-30 on this wrapper, not just on the panel: the sections below are also
+    // .editorial-reveal, and their entrance animation gives each one its own
+    // stacking context, so a z-index set inside this one can't reach past them.
+    // Lifting the whole disclosure is what keeps the open panel above the lede.
+    <div className="editorial-reveal relative z-30 -mt-6 sm:-mt-10">
       <details className="editorial-disclosure group relative inline-block">
         <summary className="inline-flex items-center gap-2 border border-accent/45 bg-accent/8 px-3.5 py-2 text-accent transition-colors hover:border-accent hover:bg-accent/15">
           <Rubric className="text-accent!">How this briefing is made</Rubric>

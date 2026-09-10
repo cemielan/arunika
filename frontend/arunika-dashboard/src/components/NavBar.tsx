@@ -72,8 +72,13 @@ export function NavBar() {
       backdrop-blur transition-[background-color,border-color] duration-120 ease-linear
       supports-backdrop-filter:bg-background/60"
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-3">
+      {/* Three columns with equal 1fr flanks: the nav sits in the middle column,
+          so it stays on the bar's centre line whether the right side holds a
+          signed-in email and Logout or just Sign In. A flex row with
+          justify-between centres it between the clusters instead, which moves it
+          every time their widths change. */}
+      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-3 sm:px-6">
+        <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
           <Image
             src="/logo-dark.svg"
             alt=""
@@ -125,41 +130,52 @@ export function NavBar() {
           })}
         </nav>
 
-        {/* Desktop right section */}
-        <div className="hidden shrink-0 items-center gap-5 md:flex">
-          {!ready ? null : isAuthenticated ? (
-            <>
-              <span className="editorial-rubric hidden max-w-36 truncate text-muted lg:block">
-                {user?.email}
-              </span>
-              <button
-                onClick={handleLogout}
+        {/* Right column. The desktop cluster and the mobile toggle share this one
+            cell so the grid keeps exactly three columns at every width. */}
+        <div className="flex min-w-0 items-center justify-end">
+          <div className="hidden min-w-0 items-center gap-5 md:flex">
+            {!ready ? null : isAuthenticated ? (
+              <>
+                {/* Deliberately not .editorial-rubric: that class forces uppercase and
+                    0.18em tracking, which suits section labels but made an ordinary
+                    address about three times wider than it needs to be, so it
+                    truncated at 9rem. Same size and weight, set plainly; title=
+                    still covers the genuinely long addresses. */}
+                <span
+                  title={user?.email}
+                  className="hidden max-w-72 truncate text-[0.6875rem] font-semibold text-muted lg:block"
+                >
+                  {user?.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="editorial-rubric text-muted transition-colors hover:text-foreground"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
                 className="editorial-rubric text-muted transition-colors hover:text-foreground"
               >
-                Logout
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/login"
-              className="editorial-rubric text-muted transition-colors hover:text-foreground"
-            >
-              Sign In
-            </Link>
-          )}
-          <ThemeSwitch />
-        </div>
+                Sign In
+              </Link>
+            )}
+            <ThemeSwitch />
+          </div>
 
-        {/* Mobile toggle. Negative margin expands the tap target to a
-            comfortable thumb size without growing the visible label. */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="editorial-rubric -m-3 p-3 text-muted transition-colors hover:text-foreground md:hidden"
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-        >
-          {menuOpen ? "Close" : "Menu"}
-        </button>
+          {/* Mobile toggle. Negative margin expands the tap target to a
+              comfortable thumb size without growing the visible label. */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="editorial-rubric -m-3 p-3 text-muted transition-colors hover:text-foreground md:hidden"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? "Close" : "Menu"}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -188,7 +204,10 @@ export function NavBar() {
           <div className="flex flex-col gap-3 pt-4">
             {!ready ? null : isAuthenticated ? (
               <>
-                <span className="editorial-rubric truncate text-muted">{user?.email}</span>
+                {/* Set plainly for the same reason as the desktop copy above. */}
+                <span className="truncate text-[0.6875rem] font-semibold text-muted">
+                  {user?.email}
+                </span>
                 <button
                   onClick={handleLogout}
                   className="editorial-rubric -mx-2 self-start px-2 py-2 text-muted transition-colors hover:text-foreground"

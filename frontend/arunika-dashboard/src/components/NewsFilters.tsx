@@ -207,13 +207,13 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
               they all resolve through.
             */}
             <Popover.Content placement="bottom end">
-              <Popover.Dialog className="flex flex-col gap-3 p-4">
+              <Popover.Dialog className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-5">
                 <RangeCalendar.Root
                   value={range}
                   onChange={setRange}
                   minValue={today(getLocalTimeZone()).subtract({ days: 6 })}
                   maxValue={today(getLocalTimeZone())}
-                  className="mx-auto!"
+                  className="mx-auto! sm:w-72! sm:max-w-72!"
                 >
                   <RangeCalendar.Header>
                     <RangeCalendar.NavButton
@@ -230,10 +230,10 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
                       &rsaquo;
                     </RangeCalendar.NavButton>
                   </RangeCalendar.Header>
-                  <RangeCalendar.Grid>
+                  <RangeCalendar.Grid className="gap-y-1!">
                     <RangeCalendar.GridHeader>
                       {(day) => (
-                        <RangeCalendar.HeaderCell className="text-[0.625rem]! tracking-[0.08em]! uppercase!">
+                        <RangeCalendar.HeaderCell className="pb-3! text-[0.625rem]! tracking-[0.08em]! uppercase!">
                           {day}
                         </RangeCalendar.HeaderCell>
                       )}
