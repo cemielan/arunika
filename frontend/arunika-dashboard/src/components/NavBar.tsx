@@ -101,7 +101,10 @@ export function NavBar() {
         </Link>
 
         {/* Desktop nav */}
-        <nav ref={trackRef} className="relative hidden items-center gap-7 self-stretch md:flex">
+        <nav
+          ref={trackRef}
+          className="relative col-start-2 hidden items-center gap-7 self-stretch md:flex"
+        >
           {isNavPage && (
             <span
               aria-hidden
@@ -131,8 +134,12 @@ export function NavBar() {
         </nav>
 
         {/* Right column. The desktop cluster and the mobile toggle share this one
-            cell so the grid keeps exactly three columns at every width. */}
-        <div className="flex min-w-0 items-center justify-end">
+            cell so the grid keeps exactly three columns at every width.
+            col-start-3 is load-bearing: the nav in the middle column is
+            display:none below md, which takes it out of grid flow altogether, so
+            auto-placement would otherwise drop this cluster into column 2 and
+            leave it sitting next to the masthead instead of on the right edge. */}
+        <div className="col-start-3 flex min-w-0 items-center justify-end">
           <div className="hidden min-w-0 items-center gap-5 md:flex">
             {!ready ? null : isAuthenticated ? (
               <>

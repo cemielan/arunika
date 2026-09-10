@@ -243,23 +243,28 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
                     </RangeCalendar.GridBody>
                   </RangeCalendar.Grid>
                 </RangeCalendar.Root>
-                <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                {/* Stacks below sm. Side by side, the rubric's uppercase and
+                    0.18em tracking make "Pick a start and end date" wide enough
+                    to wrap onto two lines on a phone and crush the buttons
+                    against it. On its own line it fits, and the buttons get a
+                    full-width row. */}
+                <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
                   <span className="editorial-rubric text-muted">
                     {range
                       ? `${range.start.toString()} – ${range.end.toString()}`
                       : "Pick a start and end date"}
                   </span>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex shrink-0 gap-2 self-stretch sm:self-auto">
                     <button
                       type="button"
-                      className="editorial-btn editorial-btn-ghost px-3! py-1.5!"
+                      className="editorial-btn editorial-btn-ghost flex-1 px-3! py-2! sm:flex-none sm:py-1.5!"
                       onClick={clearRange}
                     >
                       Clear
                     </button>
                     <button
                       type="button"
-                      className="editorial-btn px-3! py-1.5!"
+                      className="editorial-btn flex-1 px-3! py-2! sm:flex-none sm:py-1.5!"
                       onClick={applyRange}
                       disabled={!range}
                     >
