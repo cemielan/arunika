@@ -296,7 +296,7 @@ export function NotificationBanner() {
     // otherwise overlap. Desktop keeps the original bottom-right placement,
     // where the install prompt never grows wide enough to collide.
     <div className="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+4.25rem)] z-50 animate-in fade-in slide-in-from-top-2 duration-300 sm:inset-x-auto sm:top-auto sm:right-6 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-full sm:max-w-sm">
-      <div className="editorial-panel relative bg-surface p-4 shadow-lg">
+      <div className="editorial-panel relative bg-background/80 p-4 shadow-lg backdrop-blur supports-backdrop-filter:bg-background/60">
         <button
           onClick={dismissNotification}
           className="editorial-rubric absolute right-4 top-4 text-muted transition-colors hover:text-foreground"

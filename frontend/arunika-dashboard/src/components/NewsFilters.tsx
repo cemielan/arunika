@@ -213,6 +213,7 @@ export function NewsFilters({ category, search, from, to, sortBy }: NewsFiltersP
                   onChange={setRange}
                   minValue={today(getLocalTimeZone()).subtract({ days: 6 })}
                   maxValue={today(getLocalTimeZone())}
+                  className="mx-auto!"
                 >
                   <RangeCalendar.Header>
                     <RangeCalendar.NavButton
