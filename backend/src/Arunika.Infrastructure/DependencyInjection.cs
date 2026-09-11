@@ -37,7 +37,10 @@ public static class DependencyInjection
 
         services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
         // Singleton: the free-tier budget is per API key, so every enrichment
-        // worker has to spend from one shared set of counters.
+        // worker has to spend from one shared set of counters. The daily half of
+        // those counters lives in Postgres so it also survives a redeploy and is
+        // shared across instances.
+        services.AddSingleton(new GeminiUsageStore(connectionString));
         services.AddSingleton<GeminiRateLimiter>();
         services.AddSingleton<GeminiCircuitBreaker>();
         services.AddSingleton<GeminiModelRotator>();

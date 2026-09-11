@@ -146,10 +146,11 @@ public class AdminController(IBackgroundJobClient backgroundJobClient, IConfigur
     [ProducesResponseType(typeof(AiBudgetResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorEnvelope), StatusCodes.Status503ServiceUnavailable)]
-    public IActionResult GetAiBudget(
+    public async Task<IActionResult> GetAiBudget(
         [FromServices] GeminiRateLimiter rateLimiter,
         [FromServices] GeminiModelRotator modelRotator,
-        [FromHeader(Name = "X-Admin-Key")] string? adminKey)
+        [FromHeader(Name = "X-Admin-Key")] string? adminKey,
+        CancellationToken cancellationToken = default)
     {
         var configuredKey = configuration["Admin:TriggerKey"];
         if (string.IsNullOrEmpty(configuredKey))
@@ -164,7 +165,8 @@ public class AdminController(IBackgroundJobClient backgroundJobClient, IConfigur
         }
 
         var stats = modelRotator.GetUsageStats();
-        var models = rateLimiter.GetBudgets()
+        var budgets = await rateLimiter.GetBudgetsAsync(cancellationToken);
+        var models = budgets
             .Select(budget =>
             {
                 stats.Models.TryGetValue(budget.Model, out var stat);

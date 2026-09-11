@@ -14,11 +14,16 @@ public class GeminiOptions
     public string Model { get; set; } = "gemini-3.5-flash-lite";
 
     /// <summary>
-    /// Fallback chain ordered by quota sustainability (highest RPM/TPM/RPD first).
-    /// Primary: gemini-3.5-flash-lite (15 RPM, 250K TPM, 500 RPD)
-    /// Secondary: gemini-3.1-flash-lite (15 RPM, 250K TPM, 500 RPD)
-    /// Tertiary: gemini-2.5-flash-lite (10 RPM, 250K TPM, 20 RPD)
-    /// Flash models (lower RPD): gemini-3.6-flash, gemini-3.5-flash, gemini-3-flash
+    /// Fallback chain ordered by quota sustainability (highest RPD first): the two
+    /// 500-RPD Flash-Lite models carry the load, and the 20-RPD Flash models are
+    /// tail capacity for the days that outrun them.
+    ///
+    /// Every entry must also appear in <see cref="ModelQuotas"/>, and every entry
+    /// there should appear here — a model with a quota but no chain entry is
+    /// allowance the pipeline silently never spends, which is how gemini-3.7-flash
+    /// and gemini-2.5-flash sat unused. Text-out models only: the embedding, TTS,
+    /// image, video and Live API models on the same free tier cannot serve a
+    /// structured-output generateContent call.
     /// </summary>
     public List<string> FallbackModels { get; set; } =
     [
@@ -29,6 +34,7 @@ public class GeminiOptions
         "gemini-3-flash",
         "gemini-3.7-flash",
         "gemini-3.8-flash",
+        "gemini-2.5-flash",
     ];
 
     /// <summary>
@@ -72,7 +78,7 @@ public class GeminiOptions
 
     /// <summary>
     /// Attempts per model before falling through to the next one. Kept low on
-    /// purpose: every attempt spends daily quota, and with a six-model chain a
+    /// purpose: every attempt spends daily quota, and across a nine-model chain a
     /// generous retry count multiplies one bad article into dozens of requests.
     /// </summary>
     public int MaxAttemptsPerModel { get; set; } = 2;

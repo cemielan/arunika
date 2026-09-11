@@ -129,25 +129,27 @@ public class GeminiQuotaTests
     }
 
     [Fact]
-    public void QuotaSafetyPercent_DeratesThePublishedLimit()
+    public async Task QuotaSafetyPercent_DeratesThePublishedLimit()
     {
         var options = BaseOptions();
         options.QuotaSafetyPercent = 50;
         options.ModelQuotas["model-a"] = new ModelQuota { Rpm = 15, Tpm = 250_000, Rpd = 500 };
 
-        var budget = Limiter(options).GetBudgets().Single(b => b.Model == "model-a");
+        var budgets = await Limiter(options).GetBudgetsAsync();
+        var budget = budgets.Single(b => b.Model == "model-a");
 
         Assert.Equal(7, budget.MinuteLimit);
         Assert.Equal(250, budget.DailyLimit);
     }
 
     [Fact]
-    public void GetBudgets_FallsBackToTheLowestAllowanceForUnlistedModels()
+    public async Task GetBudgetsAsync_FallsBackToTheLowestAllowanceForUnlistedModels()
     {
         var options = BaseOptions();
         options.ModelQuotas.Remove("model-c");
 
-        var budget = Limiter(options).GetBudgets().Single(b => b.Model == "model-c");
+        var budgets = await Limiter(options).GetBudgetsAsync();
+        var budget = budgets.Single(b => b.Model == "model-c");
 
         Assert.Equal(5, budget.MinuteLimit);
         Assert.Equal(20, budget.DailyLimit);
