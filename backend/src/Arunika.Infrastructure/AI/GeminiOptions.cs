@@ -27,6 +27,8 @@ public class GeminiOptions
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3-flash",
+        "gemini-3.7-flash",
+        "gemini-3.8-flash",
     ];
 
     /// <summary>
@@ -43,6 +45,7 @@ public class GeminiOptions
         ["gemini-3.5-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
         ["gemini-3-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
         ["gemini-2.5-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
+        ["gemini-3.8-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
     };
 
     /// <summary>
