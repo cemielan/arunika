@@ -133,7 +133,7 @@ export default function RegisterPage() {
           drops into normal document flow.
         */}
         <Modal.Backdrop isDismissable={false}>
-          <Modal.Container size="sm">
+          <Modal.Container size="md">
             {/*
               Square corners, a hairline border and no shadow, overriding
               HeroUI's rounded/elevated defaults so the dialog reads as the
@@ -143,13 +143,13 @@ export default function RegisterPage() {
               Tailwind utility), so an unmarked override loses the cascade.
             */}
             <Modal.Dialog className="rounded-none! border! border-border! bg-surface! shadow-none!">
-              <Modal.Header>
+              <Modal.Header className="px-6! pt-6!">
                 <Rubric>Subscribe</Rubric>
                 <Modal.Heading className="editorial-display text-xl! font-semibold! text-foreground!">
                   Daily email summary
                 </Modal.Heading>
               </Modal.Header>
-              <Modal.Body className="flex flex-col gap-3">
+              <Modal.Body className="flex flex-col gap-3 px-6!">
                 <p className="text-sm leading-relaxed text-foreground/90">
                   Creating account subscribes {normalizeEmail(email)} to the Arunika daily
                   briefing email.
@@ -160,7 +160,7 @@ export default function RegisterPage() {
                   Cancel to go back without creating an account.
                 </p>
               </Modal.Body>
-              <Modal.Footer className="gap-2">
+              <Modal.Footer className="gap-2 px-6! pb-6!">
                 <button
                   type="button"
                   className="editorial-btn editorial-btn-ghost mr-auto text-[var(--danger)]! border-[var(--danger)]!"
