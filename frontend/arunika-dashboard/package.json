@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@heroui/react": "^3.2.2",
-    "@supabase/supabase-js": "^2.111.0",
+    "@supabase/supabase-js": "^2.116.0",
     "canvas": "^3.2.3",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.24.0",
