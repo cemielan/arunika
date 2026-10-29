@@ -111,7 +111,8 @@ export function InstallPrompt() {
         </>
       ) : (
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Tap <span className="font-medium text-foreground">Share</span> in Safari&rsquo;s toolbar,
+          Tap <span className="font-medium text-foreground">Share</span>{" "}
+          in Safari&rsquo;s toolbar,
           then <span className="font-medium text-foreground">Add to Home Screen</span>.
         </p>
       )}
