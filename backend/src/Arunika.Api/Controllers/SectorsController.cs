@@ -1,6 +1,6 @@
 using Arunika.Api.Contracts;
 using Arunika.Application.Abstractions;
-using Arunika.Domain.Enums;
+using Arunika.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Arunika.Api.Controllers;
@@ -8,8 +8,13 @@ namespace Arunika.Api.Controllers;
 [ApiController]
 [Route("v1/sectors")]
 [Produces("application/json")]
-public class SectorsController(IArticleRepository articleRepository) : ControllerBase
+public class SectorsController(
+    IArticleRepository articleRepository,
+    ISectorStatsRepository sectorStatsRepository) : ControllerBase
 {
+    private const int DefaultHistoryDays = 30;
+    private const int MaxHistoryDays = 365;
+
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<SectorAggregationDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSectorAggregation(CancellationToken cancellationToken)
@@ -19,35 +24,48 @@ public class SectorsController(IArticleRepository articleRepository) : Controlle
 
         var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, now, cancellationToken);
 
-        var sectorGroups = articles
-            .Where(a => a.SectorImpacts.Count != 0)
-            .SelectMany(a => a.SectorImpacts, (article, impact) => new
-            {
-                Sector = impact.Sector?.Name ?? "Unknown",
-                Impact = article.Analysis!.ImpactScore,
-                Sentiment = article.Analysis!.Sentiment,
-            })
-            .GroupBy(s => s.Sector)
-            .Select(g =>
-            {
-                var total = g.Count();
-                var bullish = g.Count(s => s.Sentiment == Sentiment.Bullish);
-                var bearish = g.Count(s => s.Sentiment == Sentiment.Bearish);
-                var neutral = g.Count(s => s.Sentiment == Sentiment.Neutral);
-
-                var dominant = "Neutral";
-                if (bullish > bearish && bullish > neutral) dominant = "Bullish";
-                else if (bearish > bullish && bearish > neutral) dominant = "Bearish";
-
-                return new SectorAggregationDto(
-                    g.Key,
-                    total,
-                    (int)Math.Round(g.Average(s => s.Impact)),
-                    bullish, bearish, neutral, dominant);
-            })
+        var sectorGroups = SentimentTally.BySector(articles)
+            .Select(s => new SectorAggregationDto(
+                s.Sector,
+                s.Tally.Total,
+                s.Tally.AverageImpactScore,
+                s.Tally.BullishCount,
+                s.Tally.BearishCount,
+                s.Tally.NeutralCount,
+                s.Tally.Dominant.ToString()))
             .OrderByDescending(s => s.ArticleCount)
             .ToList();
 
         return Ok(new ApiResponse<IReadOnlyList<SectorAggregationDto>>(sectorGroups));
+    }
+
+    /// <summary>
+    /// Daily per-sector figures for the last <paramref name="days"/> days, oldest
+    /// first. Snapshotted nightly by <c>CleanupOldArticlesJob</c>, so today and
+    /// days before the first snapshot have no rows.
+    /// </summary>
+    /// <param name="days">How far back to go (1-365). Defaults to 30.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<SectorHistoryPointDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSectorHistory([FromQuery] int days = DefaultHistoryDays, CancellationToken cancellationToken = default)
+    {
+        days = days is < 1 or > MaxHistoryDays ? DefaultHistoryDays : days;
+        var from = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-days);
+
+        var stats = await sectorStatsRepository.GetSinceAsync(from, cancellationToken);
+
+        var data = stats
+            .Select(s => new SectorHistoryPointDto(
+                s.Date,
+                s.Sector?.Name ?? "Unknown",
+                s.ArticleCount,
+                s.AverageImpactScore,
+                s.BullishCount,
+                s.BearishCount,
+                s.NeutralCount))
+            .ToList();
+
+        return Ok(new ApiResponse<IReadOnlyList<SectorHistoryPointDto>>(data));
     }
 }

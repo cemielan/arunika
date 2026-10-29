@@ -79,7 +79,8 @@ You are a financial market intelligence analyst. Below are the top market news s
 ranked by market impact. Generate a concise daily briefing in JSON format.
 
 Return a JSON object with:
-- executiveSummary: 2-3 paragraph executive summary synthesizing the key themes
+- executiveSummary: 2-3 paragraph executive summary in English synthesizing the key themes
+- executiveSummaryIndonesian: the executive summary translated into Bahasa Indonesia
 - overallSentiment: "Bullish", "Bearish", or "Neutral"
 - riskLevel: "Low", "Medium", or "High"
 
@@ -113,7 +114,8 @@ Return ONLY valid JSON, no markdown, no explanation.
         return new BriefingGenerationResult(
             payload.ExecutiveSummary,
             Enum.Parse<Sentiment>(payload.OverallSentiment, ignoreCase: true),
-            Enum.Parse<RiskLevel>(payload.RiskLevel, ignoreCase: true));
+            Enum.Parse<RiskLevel>(payload.RiskLevel, ignoreCase: true),
+            payload.ExecutiveSummaryIndonesian);
     }
 
     private sealed record OpenRouterBriefingResponse(
@@ -129,5 +131,6 @@ Return ONLY valid JSON, no markdown, no explanation.
     private sealed record OpenRouterBriefingPayload(
         [property: JsonPropertyName("executiveSummary")] string ExecutiveSummary,
         [property: JsonPropertyName("overallSentiment")] string OverallSentiment,
-        [property: JsonPropertyName("riskLevel")] string RiskLevel);
+        [property: JsonPropertyName("riskLevel")] string RiskLevel,
+        [property: JsonPropertyName("executiveSummaryIndonesian")] string? ExecutiveSummaryIndonesian = null);
 }

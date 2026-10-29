@@ -108,6 +108,9 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                     b.Property<string>("ImpactRationale")
                         .HasColumnType("text");
 
+                    b.Property<string>("ImpactRationaleIndonesian")
+                        .HasColumnType("text");
+
                     b.Property<int>("ImpactScore")
                         .HasColumnType("integer");
 
@@ -126,6 +129,9 @@ namespace Arunika.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Summary")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SummaryIndonesian")
                         .HasColumnType("text");
 
                     b.HasKey("ArticleId");
@@ -179,15 +185,30 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AverageImpactScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BearishCount")
+                        .HasColumnType("integer");
+
                     b.Property<DateOnly>("BriefingDate")
                         .HasColumnType("date");
+
+                    b.Property<int>("BullishCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ExecutiveSummary")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ExecutiveSummaryIndonesian")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("GeneratedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NeutralCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("OverallSentiment")
                         .IsRequired()
@@ -534,6 +555,36 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Arunika.Domain.Entities.SectorDailyStat", b =>
+                {
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("SectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ArticleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AverageImpactScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BearishCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BullishCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("NeutralCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Date", "SectorId");
+
+                    b.HasIndex("SectorId");
+
+                    b.ToTable("sector_daily_stats", (string)null);
+                });
+
             modelBuilder.Entity("Arunika.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -659,6 +710,17 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                     b.Navigation("Article");
 
                     b.Navigation("Briefing");
+                });
+
+            modelBuilder.Entity("Arunika.Domain.Entities.SectorDailyStat", b =>
+                {
+                    b.HasOne("Arunika.Domain.Entities.Sector", "Sector")
+                        .WithMany()
+                        .HasForeignKey("SectorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Sector");
                 });
 
             modelBuilder.Entity("Arunika.Domain.Entities.Article", b =>

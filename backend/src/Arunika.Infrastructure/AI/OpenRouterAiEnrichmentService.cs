@@ -89,7 +89,7 @@ public class OpenRouterAiEnrichmentService(
 RESPONSE FORMAT
 
 Return a JSON object with these keys, in this order:
-- summary: neutral 2-3 sentence summary, no speculation
+- summary: neutral 2-3 sentence summary in English, no speculation, whatever the article's language
 - category: one of "Politics", "Economy", "Markets", "Banking", "Technology", "Commodities", "Crypto"
 - sentiment: "Bullish", "Bearish", or "Neutral"
 - sentimentConfidence: number 0-1
@@ -99,9 +99,11 @@ Return a JSON object with these keys, in this order:
 - immediacy: integer 0-15
 - certainty: integer 0-15
 - impactScore: integer 0-100, the exact sum of the five components above
-- impactRationale: string explaining the score
+- impactRationale: string in English explaining the score
 - sectors: array of { sector: string, direction: "Positive"|"Negative"|"Neutral", magnitude: integer 0-100 }
 - keywords: array of strings, max 8 items
+- summaryIndonesian: the summary translated into Bahasa Indonesia
+- impactRationaleIndonesian: the impactRationale translated into Bahasa Indonesia
 
 Return ONLY valid JSON, no markdown, no explanation.
 """
@@ -149,7 +151,9 @@ Return ONLY valid JSON, no markdown, no explanation.
             payload.ImpactRationale,
             sectors,
             payload.Keywords ?? [],
-            $"openrouter/{model}");
+            $"openrouter/{model}",
+            payload.SummaryIndonesian,
+            payload.ImpactRationaleIndonesian);
     }
 
     private sealed record OpenRouterResponse(
@@ -183,7 +187,9 @@ Return ONLY valid JSON, no markdown, no explanation.
         int ImpactScore,
         string? ImpactRationale,
         List<OpenRouterSectorImpactPayload>? Sectors,
-        List<string>? Keywords);
+        List<string>? Keywords,
+        string? SummaryIndonesian,
+        string? ImpactRationaleIndonesian);
 
     private sealed record OpenRouterSectorImpactPayload(string Sector, string Direction, int Magnitude);
 }

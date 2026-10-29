@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { getBriefing } from "@/lib/api";
+import { getBriefing, type Briefing } from "@/lib/api";
 import { formatDateOnly } from "@/lib/formatDate";
+import { localize } from "@/lib/language";
+import { getLanguage } from "@/lib/language-server";
 import { MarketPulse } from "@/components/MarketPulse";
 import { StoryColumn, StoryLead, StoryRow } from "@/components/BriefingStories";
 import { PageHeader, Rubric, SectionRule } from "@/components/editorial";
@@ -101,9 +103,67 @@ function formatMastheadDate(dateOnly: string): string {
   });
 }
 
-export default async function Home() {
-  const briefing = await getBriefing();
+/** Short dateline for the archive pager, e.g. "Wed 10 Sep". */
+function formatPagerDate(dateOnly: string): string {
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  if (!year || !month || !day) return dateOnly;
+
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Steps through past briefings one published day at a time. Plain links to
+ * `/?date=`, so every archived issue has its own shareable URL and the page
+ * stays a server component.
+ */
+function ArchivePager({ briefing }: { briefing: Briefing }) {
+  const { previousBriefingDate, nextBriefingDate, isArchive } = briefing;
+  if (!previousBriefingDate && !isArchive) {
+    return null;
+  }
+
+  return (
+    <nav aria-label="Briefing archive" className="flex items-center justify-between gap-4">
+      {previousBriefingDate ? (
+        <Link href={`/?date=${previousBriefingDate}`} className="group inline-flex items-center gap-2 text-muted transition-colors hover:text-foreground">
+          <span className="inline-block leading-none">&larr;</span>
+          <Rubric className="text-inherit!">{formatPagerDate(previousBriefingDate)}</Rubric>
+        </Link>
+      ) : (
+        <span />
+      )}
+
+      {isArchive && (
+        <Link
+          href={nextBriefingDate ? `/?date=${nextBriefingDate}` : "/"}
+          className="group inline-flex items-center gap-2 text-accent"
+        >
+          <Rubric className="text-accent!">
+            {nextBriefingDate ? formatPagerDate(nextBriefingDate) : "Today"}
+          </Rubric>
+          <span className="editorial-arrow inline-block leading-none">&rarr;</span>
+        </Link>
+      )}
+    </nav>
+  );
+}
+
+const DATE_PARAM = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function Home({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+  const { date } = await searchParams;
+  const [briefing, language] = await Promise.all([
+    // Anything that isn't a plain yyyy-MM-dd falls back to today rather than a 400 from the API.
+    getBriefing(date && DATE_PARAM.test(date) ? date : undefined),
+    getLanguage(),
+  ]);
   const { marketPulse, topStories } = briefing;
+  const executiveSummary = localize(language, briefing.executiveSummary, briefing.executiveSummaryIndonesian);
 
   const [lead, ...rest] = topStories;
   const columns = rest.slice(0, 3);
@@ -121,15 +181,21 @@ export default async function Home() {
       <PageHeader
         kicker={formatMastheadDate(briefing.date) || "Today"}
         meta={`${marketPulse.totalArticles} stories · ${windowNote}`}
-        title="Today's Briefing"
-        lede={`The ${TOP_STORY_COUNT} highest-impact stories from the last ${windowDays} days of the news feed, ranked and summarised by AI. Rebuilt every morning.`}
+        title={briefing.isArchive ? "From the Archive" : "Today's Briefing"}
+        lede={
+          briefing.isArchive
+            ? "This briefing as it was published that day: the same ranking, summary and market pulse."
+            : `The ${TOP_STORY_COUNT} highest-impact stories from the last ${windowDays} days of the news feed, ranked and summarised by AI. Rebuilt every morning.`
+        }
       />
+
+      <ArchivePager briefing={briefing} />
 
       <Colophon windowDays={windowDays} />
 
-      {(briefing.executiveSummary || marketPulse.totalArticles > 0) && (
+      {(executiveSummary.text || marketPulse.totalArticles > 0) && (
         <section className="editorial-reveal grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
-          {briefing.executiveSummary ? (
+          {executiveSummary.text ? (
             <div className="flex flex-col gap-4">
               <SectionRule label="The lede" note="AI-generated" />
 
@@ -149,8 +215,11 @@ export default async function Home() {
                 )}
               </div>
 
-              <p className="editorial-dropcap whitespace-pre-line text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base">
-                {briefing.executiveSummary}
+              <p
+                lang={executiveSummary.lang}
+                className="editorial-dropcap whitespace-pre-line text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base"
+              >
+                {executiveSummary.text}
               </p>
             </div>
           ) : (
@@ -179,7 +248,7 @@ export default async function Home() {
         <>
           <section className="flex flex-col gap-6">
             <SectionRule label="Lead story" note={`Highest impact of ${marketPulse.totalArticles}`} />
-            <StoryLead story={lead} />
+            <StoryLead story={lead} language={language} />
           </section>
 
           {columns.length > 0 && (
@@ -187,7 +256,7 @@ export default async function Home() {
               <SectionRule label="Also this week" />
               <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
                 {columns.map((story, index) => (
-                  <StoryColumn key={story.articleId} story={story} index={index + 1} />
+                  <StoryColumn key={story.articleId} story={story} index={index + 1} language={language} />
                 ))}
               </div>
             </section>

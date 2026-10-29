@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { TopStory } from "@/lib/api";
+import { localize, type Language } from "@/lib/language";
 import {
   Dateline,
   ImpactMeter,
   Ordinal,
   Rubric,
   SentimentMark,
+  SourceCount,
 } from "@/components/editorial";
 
 /**
@@ -16,8 +18,9 @@ import {
  */
 
 /** Native-disclosure "Why it matters", carrying the AI impact rationale. */
-function WhyItMatters({ rationale }: { rationale: string | null }) {
-  if (!rationale) {
+function WhyItMatters({ story, language }: { story: TopStory; language: Language }) {
+  const rationale = localize(language, story.impactRationale, story.impactRationaleIndonesian);
+  if (!rationale.text) {
     return null;
   }
 
@@ -27,8 +30,8 @@ function WhyItMatters({ rationale }: { rationale: string | null }) {
         <span className="editorial-disclosure-sign inline-block leading-none">+</span>
         <Rubric>Why it matters</Rubric>
       </summary>
-      <p className="mt-2 border-l border-border pl-3 text-sm leading-relaxed text-muted">
-        {rationale}
+      <p lang={rationale.lang} className="mt-2 border-l border-border pl-3 text-sm leading-relaxed text-muted">
+        {rationale.text}
       </p>
     </details>
   );
@@ -49,7 +52,9 @@ function ReadCue({ label = "Read the story" }: { label?: string }) {
  * imagery — the headline, the excerpt and the rationale are all the visual
  * interest there is.
  */
-export function StoryLead({ story }: { story: TopStory }) {
+export function StoryLead({ story, language }: { story: TopStory; language: Language }) {
+  const summary = localize(language, story.summary, story.summaryIndonesian);
+
   return (
     <article className="editorial-reveal" style={{ animationDelay: "80ms" }}>
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
@@ -70,17 +75,18 @@ export function StoryLead({ story }: { story: TopStory }) {
             className="mt-3"
           />
 
-          {story.summary && (
-            <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
-              {story.summary}
+          {summary.text && (
+            <p lang={summary.lang} className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
+              {summary.text}
             </p>
           )}
 
-          <WhyItMatters rationale={story.impactRationale} />
+          <WhyItMatters story={story} language={language} />
 
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-4">
             <ImpactMeter score={story.impactScore} />
             <SentimentMark sentiment={story.sentiment} />
+            <SourceCount count={story.sourceCount} />
             {story.sectors.slice(0, 3).map((sector) => (
               <Rubric key={sector}>{sector}</Rubric>
             ))}
@@ -95,7 +101,17 @@ export function StoryLead({ story }: { story: TopStory }) {
 }
 
 /** Stories two through four: the column grid under "Also this week". */
-export function StoryColumn({ story, index }: { story: TopStory; index: number }) {
+export function StoryColumn({
+  story,
+  index,
+  language,
+}: {
+  story: TopStory;
+  index: number;
+  language: Language;
+}) {
+  const summary = localize(language, story.summary, story.summaryIndonesian);
+
   return (
     <article
       className="editorial-reveal flex h-full flex-col border-t-2 border-foreground/85 pt-4"
@@ -116,15 +132,18 @@ export function StoryColumn({ story, index }: { story: TopStory; index: number }
         </h3>
       </Link>
 
-      {story.summary && (
-        <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-muted">{story.summary}</p>
+      {summary.text && (
+        <p lang={summary.lang} className="mt-3 line-clamp-4 text-sm leading-relaxed text-muted">
+          {summary.text}
+        </p>
       )}
 
-      <WhyItMatters rationale={story.impactRationale} />
+      <WhyItMatters story={story} language={language} />
 
       <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
         <ImpactMeter score={story.impactScore} />
         <SentimentMark sentiment={story.sentiment} />
+        <SourceCount count={story.sourceCount} />
       </div>
     </article>
   );
@@ -152,6 +171,7 @@ export function StoryRow({ story, index }: { story: TopStory; index: number }) {
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Dateline source={story.source} publishedAt={story.publishedAt} />
             <SentimentMark sentiment={story.sentiment} />
+            <SourceCount count={story.sourceCount} />
           </div>
         </div>
 

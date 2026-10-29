@@ -36,11 +36,13 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
             {
                 ArticleId = articleId,
                 Summary = result.Summary,
+                SummaryIndonesian = result.SummaryIndonesian,
                 CategoryId = categoryId.Value,
                 Sentiment = result.Sentiment,
                 SentimentConfidence = result.SentimentConfidence,
                 ImpactScore = result.ImpactScore,
                 ImpactRationale = result.ImpactRationale,
+                ImpactRationaleIndonesian = result.ImpactRationaleIndonesian,
                 ModelVersion = result.ModelVersion,
                 GeneratedAt = DateTimeOffset.UtcNow
             });
@@ -135,12 +137,40 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Loads the ranked articles in full (source, category, sectors) so an
+    // archived briefing can render its stories after the window has moved on.
     public Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default)
         => dbContext.Briefings
             .Include(b => b.Items.OrderBy(i => i.Rank))
                 .ThenInclude(bi => bi.Article!)
-                    .ThenInclude(a => a.Analysis)
+                    .ThenInclude(a => a.Analysis!)
+                        .ThenInclude(analysis => analysis.Category)
+            .Include(b => b.Items)
+                .ThenInclude(bi => bi.Article!)
+                    .ThenInclude(a => a.Source)
+            .Include(b => b.Items)
+                .ThenInclude(bi => bi.Article!)
+                    .ThenInclude(a => a.SectorImpacts)
+                        .ThenInclude(impact => impact.Sector)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(b => b.BriefingDate == date, cancellationToken);
+
+    public async Task<(DateOnly? Previous, DateOnly? Next)> GetAdjacentBriefingDatesAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        var previous = await dbContext.Briefings
+            .Where(b => b.BriefingDate < date)
+            .OrderByDescending(b => b.BriefingDate)
+            .Select(b => (DateOnly?)b.BriefingDate)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var next = await dbContext.Briefings
+            .Where(b => b.BriefingDate > date)
+            .OrderBy(b => b.BriefingDate)
+            .Select(b => (DateOnly?)b.BriefingDate)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return (previous, next);
+    }
 
     public Task<Briefing?> GetLatestBriefingAsync(CancellationToken cancellationToken = default)
         => dbContext.Briefings

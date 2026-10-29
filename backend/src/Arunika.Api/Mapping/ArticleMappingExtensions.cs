@@ -5,7 +5,7 @@ namespace Arunika.Api.Mapping;
 
 public static class ArticleMappingExtensions
 {
-    public static NewsListItemDto ToListItemDto(this Article article) => new(
+    public static NewsListItemDto ToListItemDto(this Article article, int sourceCount) => new(
         article.Id,
         article.Title,
         article.Source?.Name ?? string.Empty,
@@ -13,7 +13,9 @@ public static class ArticleMappingExtensions
         article.Analysis?.Category?.Name,
         article.Analysis?.Sentiment.ToString(),
         article.Analysis?.ImpactScore,
-        article.Analysis?.Summary);
+        article.Analysis?.Summary,
+        article.Analysis?.SummaryIndonesian,
+        sourceCount);
 
     public static ArticleDetailDto ToDetailDto(this Article article, IReadOnlyList<Article> duplicates) => new(
         article.Id,
@@ -37,5 +39,7 @@ public static class ArticleMappingExtensions
         article.DuplicateOfId,
         duplicates
             .Select(duplicate => new DuplicateArticleDto(duplicate.Id, duplicate.Title, duplicate.Source?.Name ?? string.Empty))
-            .ToList());
+            .ToList(),
+        article.Analysis?.SummaryIndonesian,
+        article.Analysis?.ImpactRationaleIndonesian);
 }

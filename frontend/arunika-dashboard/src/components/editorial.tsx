@@ -176,6 +176,22 @@ export function SentimentMark({
   );
 }
 
+/**
+ * How many outlets carried the story. Only shown from two up: a story carried
+ * by one source is the default, and labelling every card "1 source" is noise.
+ */
+export function SourceCount({ count, className = "" }: { count: number; className?: string }) {
+  if (count < 2) {
+    return null;
+  }
+
+  return (
+    <Rubric className={className}>
+      <span className="font-mono text-foreground">{count}</span> sources
+    </Rubric>
+  );
+}
+
 /** Source · timestamp · category dateline. */
 export function Dateline({
   source,

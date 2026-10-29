@@ -51,7 +51,8 @@ public class NewsController(IArticleRepository articleRepository) : ControllerBa
             category, fromInclusive, toExclusive, sortBy, page, pageSize, search, cancellationToken);
         var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize);
 
-        var data = items.Select(article => article.ToListItemDto()).ToList();
+        var sourceCounts = await articleRepository.GetSourceCountsAsync(items.Select(article => article.Id).ToList(), cancellationToken);
+        var data = items.Select(article => article.ToListItemDto(sourceCounts.GetValueOrDefault(article.Id, 1))).ToList();
         var meta = new PageMeta(page, pageSize, totalItems, totalPages);
 
         return Ok(new ApiResponse<IReadOnlyList<NewsListItemDto>>(data, meta));

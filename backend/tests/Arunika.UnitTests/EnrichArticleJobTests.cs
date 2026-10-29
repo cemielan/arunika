@@ -92,6 +92,9 @@ public class EnrichArticleJobTests
         public Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default)
             => Task.FromResult<Briefing?>(null);
 
+        public Task<(DateOnly? Previous, DateOnly? Next)> GetAdjacentBriefingDatesAsync(DateOnly date, CancellationToken cancellationToken = default)
+            => Task.FromResult<(DateOnly?, DateOnly?)>((null, null));
+
         public Task<Briefing?> GetLatestBriefingAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<Briefing?>(null);
     }

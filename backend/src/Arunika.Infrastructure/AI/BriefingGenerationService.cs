@@ -28,7 +28,12 @@ public class BriefingGenerationService(
             ["executiveSummary"] = new Schema
             {
                 Type = SchemaType.String,
-                Description = "2-3 paragraph executive summary of the day's top market news."
+                Description = "2-3 paragraph executive summary of the day's top market news, in English."
+            },
+            ["executiveSummaryIndonesian"] = new Schema
+            {
+                Type = SchemaType.String,
+                Description = "The executive summary translated into Bahasa Indonesia, same paragraphs."
             },
             ["overallSentiment"] = new Schema
             {
@@ -41,7 +46,7 @@ public class BriefingGenerationService(
                 Enum = ["Low", "Medium", "High"]
             }
         },
-        Required = ["executiveSummary", "overallSentiment", "riskLevel"]
+        Required = ["executiveSummary", "executiveSummaryIndonesian", "overallSentiment", "riskLevel"]
     };
 
     private static readonly List<SafetySetting> SafetySettings =
@@ -95,7 +100,8 @@ public class BriefingGenerationService(
                     return new BriefingGenerationResult(
                         payload.ExecutiveSummary,
                         Enum.Parse<Sentiment>(payload.OverallSentiment, ignoreCase: true),
-                        Enum.Parse<RiskLevel>(payload.RiskLevel, ignoreCase: true));
+                        Enum.Parse<RiskLevel>(payload.RiskLevel, ignoreCase: true),
+                        payload.ExecutiveSummaryIndonesian);
                 }
                 catch (GeminiModelExhaustedException ex)
                 {
@@ -142,7 +148,8 @@ public class BriefingGenerationService(
             {storiesText}
 
             Provide:
-            1. An executive summary (2-3 paragraphs) synthesizing the key themes.
+            1. An executive summary (2-3 paragraphs, in English) synthesizing the key themes,
+               and the same summary translated into Bahasa Indonesia.
             2. An overall market sentiment (Bullish, Bearish, or Neutral).
             3. A risk level (Low, Medium, or High) for the near-term outlook.
             """;
@@ -154,5 +161,7 @@ public class BriefingGenerationService(
         [property: JsonPropertyName("overallSentiment")]
         string OverallSentiment,
         [property: JsonPropertyName("riskLevel")]
-        string RiskLevel);
+        string RiskLevel,
+        [property: JsonPropertyName("executiveSummaryIndonesian")]
+        string? ExecutiveSummaryIndonesian = null);
 }

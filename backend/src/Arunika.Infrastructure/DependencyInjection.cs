@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<INewsSourceRepository, NewsSourceRepository>();
         services.AddScoped<IArticleAnalysisRepository, ArticleAnalysisRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ISectorStatsRepository, SectorStatsRepository>();
 
         services.Configure<SupabaseOptions>(configuration.GetSection(SupabaseOptions.SectionName));
 
@@ -101,6 +102,7 @@ public static class DependencyInjection
         services.AddScoped<FetchNewsJob>();
         services.AddScoped<EnrichArticleJob>();
         services.AddScoped<RetryFailedEnrichmentJob>();
+        services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.SectionName));
         services.AddScoped<CleanupOldArticlesJob>();
         services.AddScoped<GenerateDailyBriefingJob>();
         services.AddScoped<SendEmailDigestJob>();

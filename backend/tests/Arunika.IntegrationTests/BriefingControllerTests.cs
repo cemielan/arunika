@@ -26,6 +26,8 @@ public class BriefingControllerTests(ApiTestHost host) : IClassFixture<ApiTestHo
         Assert.Equal(2, body.Data.TopStories.Count);
         Assert.Equal(FakeArticleRepository.MarketsArticleId, body.Data.TopStories[0].ArticleId);
         Assert.True(body.Data.TopStories[0].ImpactScore >= body.Data.TopStories[1].ImpactScore);
+        // The markets story was also carried by a second outlet, linked as its duplicate.
+        Assert.Equal(2, body.Data.TopStories[0].SourceCount);
     }
 
     [Fact]

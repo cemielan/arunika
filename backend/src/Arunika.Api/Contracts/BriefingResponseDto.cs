@@ -7,7 +7,8 @@ namespace Arunika.Api.Contracts;
 /// <see cref="RiskLevel"/>) are populated; otherwise they fall back to a
 /// computed-on-request market pulse. <see cref="TopStories"/> are always
 /// computed from the same rolling <see cref="RangeStart"/>-<see cref="RangeEnd"/>
-/// window.
+/// window â€” except on an archived date (<see cref="IsArchive"/>), where both
+/// are the ones stored with that day's briefing.
 /// </summary>
 public sealed record BriefingResponseDto(
     DateOnly Date,
@@ -18,7 +19,11 @@ public sealed record BriefingResponseDto(
     IReadOnlyList<TopStoryDto> TopStories,
     string? ExecutiveSummary = null,
     string? OverallSentiment = null,
-    string? RiskLevel = null);
+    string? RiskLevel = null,
+    string? ExecutiveSummaryIndonesian = null,
+    bool IsArchive = false,
+    DateOnly? PreviousBriefingDate = null,
+    DateOnly? NextBriefingDate = null);
 
 /// <summary>
 /// One ranked story in the briefing. Carries the analysis fields the briefing
@@ -36,7 +41,10 @@ public sealed record TopStoryDto(
     string? Category = null,
     string? Source = null,
     DateTimeOffset? PublishedAt = null,
-    string? ImpactRationale = null);
+    string? ImpactRationale = null,
+    string? SummaryIndonesian = null,
+    string? ImpactRationaleIndonesian = null,
+    int SourceCount = 1);
 
 /// <summary>
 /// Aggregate sentiment/impact conclusion across every enriched, non-duplicate

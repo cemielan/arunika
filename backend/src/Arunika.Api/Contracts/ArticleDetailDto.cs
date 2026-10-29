@@ -19,7 +19,9 @@ public sealed record ArticleDetailDto(
     IReadOnlyList<SectorImpactDto> Sectors,
     IReadOnlyList<string> Keywords,
     Guid? DuplicateOfId,
-    IReadOnlyList<DuplicateArticleDto> Duplicates);
+    IReadOnlyList<DuplicateArticleDto> Duplicates,
+    string? SummaryIndonesian,
+    string? ImpactRationaleIndonesian);
 
 public sealed record SectorImpactDto(string Sector, string Direction, int Magnitude);
 

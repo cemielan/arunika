@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArticleDetail } from "@/lib/api";
+import { localize } from "@/lib/language";
+import { getLanguage } from "@/lib/language-server";
 import {
   Dateline,
   ImpactMeter,
@@ -25,11 +27,14 @@ const DIRECTION_TONE: Record<string, string> = {
  */
 export default async function ArticleDetailPage({ params }: ArticleDetailPageProps) {
   const { id } = await params;
-  const article = await getArticleDetail(id);
+  const [article, language] = await Promise.all([getArticleDetail(id), getLanguage()]);
 
   if (!article) {
     notFound();
   }
+
+  const summary = localize(language, article.summary, article.summaryIndonesian);
+  const rationale = localize(language, article.impactRationale, article.impactRationaleIndonesian);
 
   return (
     <article className="mx-auto flex w-full max-w-3xl flex-col gap-10">
@@ -88,20 +93,20 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
         </div>
       )}
 
-      {article.summary && (
+      {summary.text && (
         <section className="editorial-reveal flex flex-col gap-4" style={{ animationDelay: "80ms" }}>
           <SectionRule label="Summary" />
-          <p className="editorial-dropcap text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base">
-            {article.summary}
+          <p lang={summary.lang} className="editorial-dropcap text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base">
+            {summary.text}
           </p>
         </section>
       )}
 
-      {article.impactRationale && (
+      {rationale.text && (
         <section className="editorial-reveal flex flex-col gap-4" style={{ animationDelay: "120ms" }}>
           <SectionRule label="Why it matters" />
-          <p className="border-l border-border pl-4 text-[0.9375rem] leading-relaxed text-muted sm:text-base">
-            {article.impactRationale}
+          <p lang={rationale.lang} className="border-l border-border pl-4 text-[0.9375rem] leading-relaxed text-muted sm:text-base">
+            {rationale.text}
           </p>
         </section>
       )}

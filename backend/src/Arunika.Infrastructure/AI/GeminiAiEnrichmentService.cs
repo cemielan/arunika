@@ -299,7 +299,9 @@ public class GeminiAiEnrichmentService(
             payload.ImpactRationale,
             sectors,
             payload.Keywords ?? [],
-            modelVersion);
+            modelVersion,
+            payload.SummaryIndonesian,
+            payload.ImpactRationaleIndonesian);
     }
 
     // Structured output is generated in order, so the five rubric components are
@@ -313,11 +315,12 @@ public class GeminiAiEnrichmentService(
         [
             "summary", "category", "sentiment", "sentimentConfidence",
             "breadth", "magnitude", "surprise", "immediacy", "certainty",
-            "impactScore", "impactRationale", "sectors", "keywords"
+            "impactScore", "impactRationale", "sectors", "keywords",
+            "summaryIndonesian", "impactRationaleIndonesian"
         ],
         Properties = new Dictionary<string, Schema>
         {
-            ["summary"] = new Schema { Type = SchemaType.String, Description = "Neutral 2-3 sentence summary, no speculation." },
+            ["summary"] = new Schema { Type = SchemaType.String, Description = "Neutral 2-3 sentence summary in English, no speculation, whatever the article's language." },
             ["category"] = new Schema
             {
                 Type = SchemaType.String,
@@ -337,7 +340,7 @@ public class GeminiAiEnrichmentService(
                 Maximum = 100,
                 Description = "The exact sum of breadth, magnitude, surprise, immediacy and certainty. Never rounded to a multiple of 5 or 10."
             },
-            ["impactRationale"] = new Schema { Type = SchemaType.String, Description = "One or two sentences naming the two components that dominated the score." },
+            ["impactRationale"] = new Schema { Type = SchemaType.String, Description = "One or two sentences in English naming the two components that dominated the score." },
             ["sectors"] = new Schema
             {
                 Type = SchemaType.Array,
@@ -358,13 +361,18 @@ public class GeminiAiEnrichmentService(
                 Type = SchemaType.Array,
                 Items = new Schema { Type = SchemaType.String },
                 MaxItems = 8
-            }
+            },
+            // Translations ride on the same call: the daily budget counts requests,
+            // not tokens, so a separate translation call would halve throughput.
+            ["summaryIndonesian"] = new Schema { Type = SchemaType.String, Description = "The summary translated into Bahasa Indonesia." },
+            ["impactRationaleIndonesian"] = new Schema { Type = SchemaType.String, Description = "The impactRationale translated into Bahasa Indonesia." }
         },
         Required =
         [
             "summary", "category", "sentiment",
             "breadth", "magnitude", "surprise", "immediacy", "certainty",
-            "impactScore", "impactRationale"
+            "impactScore", "impactRationale",
+            "summaryIndonesian", "impactRationaleIndonesian"
         ]
     };
 
@@ -381,7 +389,9 @@ public class GeminiAiEnrichmentService(
         int ImpactScore,
         string? ImpactRationale,
         List<GeminiSectorImpactPayload>? Sectors,
-        List<string>? Keywords);
+        List<string>? Keywords,
+        string? SummaryIndonesian,
+        string? ImpactRationaleIndonesian);
 
     private sealed record GeminiSectorImpactPayload(string Sector, string Direction, int Magnitude);
 }

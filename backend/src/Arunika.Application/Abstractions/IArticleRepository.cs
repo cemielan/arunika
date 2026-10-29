@@ -70,10 +70,19 @@ public interface IArticleRepository
     Task<IReadOnlyList<Article>> GetEnrichedArticlesInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// For each of <paramref name="articleIds"/>, the number of distinct sources
+    /// that carried the story: the article's own source plus those of every
+    /// article linked to it as a duplicate. Ids with no row come back as 1.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetSourceCountsAsync(IReadOnlyCollection<Guid> articleIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes articles with a <see cref="Article.PublishedAt"/> older than
     /// <paramref name="olderThan"/>, along with their related analysis, sector
-    /// impacts, keywords, briefing items, and duplicate links. Runs in a single
-    /// transaction. Returns the number of articles deleted.
+    /// impacts, keywords, and duplicate links. Articles ranked in any briefing,
+    /// and the duplicates linked to them, are kept so the briefing archive
+    /// stays complete. Runs in a single transaction. Returns the number of
+    /// articles deleted.
     /// </summary>
     Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default);
 }

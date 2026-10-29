@@ -2,7 +2,7 @@ using Arunika.Api.Contracts;
 using Arunika.Application.Abstractions;
 using Arunika.Application.Constants;
 using Arunika.Application.Services;
-using Arunika.Domain.Enums;
+using Arunika.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -13,8 +13,9 @@ namespace Arunika.Api.Controllers;
 /// cached AI-generated briefing (executive summary, sentiment, risk level) when
 /// <c>GenerateDailyBriefingJob</c> has already run for the requested date;
 /// otherwise generates it on demand and falls back to the most recent briefing
-/// only when generation fails. Top stories and market pulse are always computed
-/// from the same rolling <see cref="WindowDays"/>-day window.
+/// only when generation fails. Top stories and market pulse are computed from
+/// the same rolling <see cref="WindowDays"/>-day window, except for a past date
+/// with its own briefing, which serves the ranking and pulse stored with it.
 /// </summary>
 [ApiController]
 [Route("v1/briefing")]
@@ -79,20 +80,55 @@ public class BriefingController(
             }
         }
 
-        // If no briefing exists for the requested date, fall back to the most
-        // recent briefing.
-        if (cached is null)
+        // A past date with its own briefing is the archive: serve the stories and
+        // pulse stored with it. Its window's articles have mostly been deleted by
+        // now, so recounting them would show a fraction of what was published.
+        var isArchive = rangeEnd < todayJakarta && cached is { Items.Count: > 0 };
+
+        // Without a briefing of its own, today borrows the most recent one. A
+        // past date doesn't: that would put another day's summary under it.
+        if (cached is null && rangeEnd >= todayJakarta)
         {
             cached = await articleAnalysisRepository.GetLatestBriefingAsync(cancellationToken);
         }
 
-        var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
+        List<Article> storyArticles;
+        MarketPulseDto marketPulse;
 
-        var topStories = articles
-            .OrderByDescending(article => article.Analysis!.ImpactScore)
-            .ThenByDescending(article => article.PublishedAt)
-            .ThenBy(article => article.Id)
-            .Take(TopStoryCount)
+        if (isArchive)
+        {
+            storyArticles = cached!.Items
+                .OrderBy(item => item.Rank)
+                .Select(item => item.Article)
+                .Where(article => article?.Analysis is not null)
+                .Select(article => article!)
+                .ToList();
+
+            var stored = new SentimentTally(cached.BullishCount, cached.BearishCount, cached.NeutralCount, cached.AverageImpactScore);
+            // Briefings saved before the pulse was stored have no counts; a
+            // partial recount beats an empty pulse.
+            marketPulse = stored.Total > 0
+                ? BuildMarketPulse(stored)
+                : BuildMarketPulse(SentimentTally.From(await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken)));
+        }
+        else
+        {
+            var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
+
+            storyArticles = articles
+                .OrderByDescending(article => article.Analysis!.ImpactScore)
+                .ThenByDescending(article => article.PublishedAt)
+                .ThenBy(article => article.Id)
+                .Take(TopStoryCount)
+                .ToList();
+
+            marketPulse = BuildMarketPulse(SentimentTally.From(articles));
+        }
+
+        var sourceCounts = await articleRepository.GetSourceCountsAsync(
+            storyArticles.Select(article => article.Id).ToList(), cancellationToken);
+
+        var topStories = storyArticles
             .Select(article => new TopStoryDto(
                 article.Id,
                 article.Title,
@@ -106,16 +142,24 @@ public class BriefingController(
                 article.Analysis!.Category?.Name,
                 article.Source?.Name,
                 article.PublishedAt,
-                article.Analysis!.ImpactRationale))
+                article.Analysis!.ImpactRationale,
+                article.Analysis!.SummaryIndonesian,
+                article.Analysis!.ImpactRationaleIndonesian,
+                sourceCounts.GetValueOrDefault(article.Id, 1)))
             .ToList();
 
-        var marketPulse = BuildMarketPulse(articles);
+        var (previousDate, nextDate) = await articleAnalysisRepository.GetAdjacentBriefingDatesAsync(rangeEnd, cancellationToken);
 
         var data = new BriefingResponseDto(
             rangeEnd, rangeStart, rangeEnd, WindowDays, marketPulse, topStories,
             cached?.ExecutiveSummary,
             cached is not null ? cached.OverallSentiment.ToString() : null,
-            cached is not null ? cached.RiskLevel.ToString() : null);
+            cached is not null ? cached.RiskLevel.ToString() : null,
+            cached?.ExecutiveSummaryIndonesian,
+            isArchive,
+            previousDate,
+            // Today has no "next": anything later is a future date.
+            rangeEnd >= todayJakarta ? null : nextDate);
         var meta = new { generatedAt = DateTimeOffset.UtcNow };
 
         return Ok(new ApiResponse<BriefingResponseDto>(data, meta));
@@ -144,46 +188,14 @@ public class BriefingController(
         }
     }
 
-    private static MarketPulseDto BuildMarketPulse(IReadOnlyList<Arunika.Domain.Entities.Article> articles)
+    private static MarketPulseDto BuildMarketPulse(SentimentTally tally)
     {
-        var bullish = 0;
-        var bearish = 0;
-        var neutral = 0;
-        var impactSum = 0;
-
-        foreach (var article in articles)
-        {
-            impactSum += article.Analysis!.ImpactScore;
-            switch (article.Analysis!.Sentiment)
-            {
-                case Sentiment.Bullish:
-                    bullish++;
-                    break;
-                case Sentiment.Bearish:
-                    bearish++;
-                    break;
-                default:
-                    neutral++;
-                    break;
-            }
-        }
-
-        var total = articles.Count;
-        var averageImpact = total > 0 ? (int)Math.Round(impactSum / (double)total) : 0;
-
-        var sentiment = "Neutral";
-        if (bullish > bearish && bullish > neutral)
-        {
-            sentiment = "Bullish";
-        }
-        else if (bearish > bullish && bearish > neutral)
-        {
-            sentiment = "Bearish";
-        }
-
-        var dominant = Math.Max(bullish, Math.Max(bearish, neutral));
+        var total = tally.Total;
+        var dominant = Math.Max(tally.BullishCount, Math.Max(tally.BearishCount, tally.NeutralCount));
         var confidence = total > 0 ? (int)Math.Round(dominant / (double)total * 100) : 0;
 
-        return new MarketPulseDto(sentiment, bullish, bearish, neutral, total, averageImpact, confidence);
+        return new MarketPulseDto(
+            tally.Dominant.ToString(), tally.BullishCount, tally.BearishCount, tally.NeutralCount,
+            total, tally.AverageImpactScore, confidence);
     }
 }

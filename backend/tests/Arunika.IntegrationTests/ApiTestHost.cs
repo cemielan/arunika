@@ -37,6 +37,7 @@ public sealed class ApiTestHost : IAsyncLifetime
             .AddApplicationPart(typeof(NewsController).Assembly);
         builder.Services.AddScoped<IArticleRepository, FakeArticleRepository>();
         builder.Services.AddScoped<IArticleAnalysisRepository, FakeArticleAnalysisRepository>();
+        builder.Services.AddScoped<ISectorStatsRepository, FakeSectorStatsRepository>();
         builder.Services.AddScoped<IBriefingGenerationService, FakeBriefingGenerationService>();
         builder.Services.AddScoped<DailyBriefingService>();
         builder.Services.AddArunikaRateLimiting();

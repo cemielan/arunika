@@ -224,6 +224,11 @@ public class FakeArticleRepository : IArticleRepository
         return Task.FromResult<IReadOnlyList<Article>>(results);
     }
 
+    public Task<IReadOnlyDictionary<Guid, int>> GetSourceCountsAsync(IReadOnlyCollection<Guid> articleIds, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyDictionary<Guid, int>>(articleIds.ToDictionary(
+            id => id,
+            id => _articles.Where(a => a.Id == id || a.DuplicateOfId == id).Select(a => a.SourceId).Distinct().Count()));
+
     public Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
     {
         var count = _articles.RemoveAll(a => a.PublishedAt < olderThan);

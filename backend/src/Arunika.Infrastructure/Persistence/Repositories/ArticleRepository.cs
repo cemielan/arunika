@@ -150,20 +150,48 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyDictionary<Guid, int>> GetSourceCountsAsync(IReadOnlyCollection<Guid> articleIds, CancellationToken cancellationToken = default)
+    {
+        if (articleIds.Count == 0)
+        {
+            return new Dictionary<Guid, int>();
+        }
+
+        var storySources = await dbContext.Articles
+            .Where(a => articleIds.Contains(a.Id) || (a.DuplicateOfId != null && articleIds.Contains(a.DuplicateOfId.Value)))
+            .Select(a => new { Story = a.DuplicateOfId ?? a.Id, a.SourceId })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return storySources
+            .GroupBy(x => x.Story)
+            .ToDictionary(g => g.Key, g => g.Count());
+    }
+
     public async Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
     {
         var cutoff = olderThan.UtcDateTime;
 
-        var oldArticles = await dbContext.Articles
+        // A briefing links its ranked stories by id, so deleting one leaves an
+        // archived briefing with a hole in its ranking. Those articles, and the
+        // duplicates that make up their "also reported by" coverage, are kept
+        // for good — at most ten a day.
+        var ids = await dbContext.Articles
             .Where(a => a.PublishedAt < cutoff)
+            .Where(a => !a.BriefingItems.Any())
+            .Where(a => a.DuplicateOf == null || !a.DuplicateOf.BriefingItems.Any())
+            .Select(a => a.Id)
             .ToListAsync(cancellationToken);
 
-        if (oldArticles.Count == 0)
+        if (ids.Count == 0)
         {
             return 0;
         }
 
-        var ids = oldArticles.Select(a => a.Id).ToList();
+        // Each delete would otherwise commit on its own, and a failure part way
+        // through would leave articles stripped of their analysis until the
+        // next night's run.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         await dbContext.ArticleSectorImpacts
             .Where(si => ids.Contains(si.ArticleId))
@@ -173,14 +201,12 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Where(ak => ids.Contains(ak.ArticleId))
             .ExecuteDeleteAsync(cancellationToken);
 
-        await dbContext.BriefingItems
-            .Where(bi => ids.Contains(bi.ArticleId))
-            .ExecuteDeleteAsync(cancellationToken);
-
         await dbContext.ArticleAnalyses
             .Where(aa => ids.Contains(aa.ArticleId))
             .ExecuteDeleteAsync(cancellationToken);
 
+        // Duplicates of a deleted story can be newer than the cutoff; they go
+        // with it, since the foreign key won't let them outlive it.
         await dbContext.Articles
             .Where(a => ids.Contains(a.DuplicateOfId!.Value))
             .ExecuteDeleteAsync(cancellationToken);
@@ -189,6 +215,8 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Where(a => ids.Contains(a.Id))
             .ExecuteDeleteAsync(cancellationToken);
 
-        return oldArticles.Count;
+        await transaction.CommitAsync(cancellationToken);
+
+        return ids.Count;
     }
 }

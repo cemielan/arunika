@@ -469,3 +469,6 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# Edge function shared secret, never commit
+supabase/SEND_SECRET.txt

@@ -48,6 +48,9 @@ export type NewsListItem = {
   sentiment: string | null;
   impactScore: number | null;
   summary: string | null;
+  summaryIndonesian: string | null;
+  /** Distinct outlets that carried the story, counting linked duplicates. */
+  sourceCount: number;
 };
 
 export type SectorImpact = {
@@ -79,6 +82,8 @@ export type ArticleDetail = {
   keywords: string[];
   duplicateOfId: string | null;
   duplicates: DuplicateArticle[];
+  summaryIndonesian: string | null;
+  impactRationaleIndonesian: string | null;
 };
 
 export type TopStory = {
@@ -94,6 +99,10 @@ export type TopStory = {
   publishedAt: string | null;
   /** AI rationale for the impact score, shown as "Why it matters" on the lead story. */
   impactRationale: string | null;
+  summaryIndonesian: string | null;
+  impactRationaleIndonesian: string | null;
+  /** Distinct outlets that carried the story, counting linked duplicates. */
+  sourceCount: number;
 };
 
 export type MarketSentiment = "Bullish" | "Bearish" | "Neutral";
@@ -129,6 +138,12 @@ export type Briefing = {
   overallSentiment?: string;
   /** AI-generated risk level (when GenerateDailyBriefingJob has run). */
   riskLevel?: string;
+  executiveSummaryIndonesian?: string;
+  /** A past day's briefing, served with the stories and pulse stored that day. */
+  isArchive: boolean;
+  /** Nearest briefing dates either side of `date`, for stepping through the archive. */
+  previousBriefingDate: string | null;
+  nextBriefingDate: string | null;
 };
 
 /** The seven fixed categories seeded in the database (design doc §4). */
@@ -207,6 +222,10 @@ type RawBriefing = {
   executiveSummary?: string;
   overallSentiment?: string;
   riskLevel?: string;
+  executiveSummaryIndonesian?: string;
+  isArchive?: boolean;
+  previousBriefingDate?: string | null;
+  nextBriefingDate?: string | null;
 };
 
 /**
@@ -227,6 +246,9 @@ function normalizeTopStory(story: RawTopStory): TopStory {
     source: story.source ?? null,
     publishedAt: story.publishedAt ?? null,
     impactRationale: story.impactRationale ?? null,
+    summaryIndonesian: story.summaryIndonesian ?? null,
+    impactRationaleIndonesian: story.impactRationaleIndonesian ?? null,
+    sourceCount: story.sourceCount ?? 1,
   };
 }
 
@@ -246,6 +268,9 @@ function emptyBriefing(date?: string): Briefing {
       confidence: 0,
     },
     topStories: [],
+    isArchive: false,
+    previousBriefingDate: null,
+    nextBriefingDate: null,
   };
 }
 
@@ -263,13 +288,28 @@ export const getBriefing = unstable_cache(
       return emptyBriefing(date);
     }
 
-    const { marketPulse, topStories, executiveSummary, overallSentiment, riskLevel, ...rest } = result.data;
+    const {
+      marketPulse,
+      topStories,
+      executiveSummary,
+      overallSentiment,
+      riskLevel,
+      executiveSummaryIndonesian,
+      isArchive,
+      previousBriefingDate,
+      nextBriefingDate,
+      ...rest
+    } = result.data;
     return {
       ...rest,
       topStories: (topStories ?? []).map(normalizeTopStory),
       executiveSummary,
       overallSentiment,
       riskLevel,
+      executiveSummaryIndonesian,
+      isArchive: isArchive ?? false,
+      previousBriefingDate: previousBriefingDate ?? null,
+      nextBriefingDate: nextBriefingDate ?? null,
       marketPulse: {
         sentiment: marketPulse.sentiment,
         bullishCount: marketPulse.bullishCount,
@@ -388,3 +428,28 @@ export const getSectors = unstable_cache(
 );
 
 
+
+/** One sector on one day, snapshotted nightly before old articles are deleted. */
+export type SectorHistoryPoint = {
+  /** Jakarta calendar day, "yyyy-MM-dd". */
+  date: string;
+  sector: string;
+  articleCount: number;
+  averageImpactScore: number;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+};
+
+export const getSectorHistory = unstable_cache(
+  async (days: number): Promise<SectorHistoryPoint[]> => {
+    const result = await apiGet<SectorHistoryPoint[]>(`/v1/sectors/history?days=${days}`, 3600);
+    if ("notFound" in result) {
+      return [];
+    }
+    return result.data;
+  },
+  ["sector-history"],
+  // Rows only change once a night, when CleanupOldArticlesJob snapshots them.
+  { revalidate: 3600 },
+);

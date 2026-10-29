@@ -42,6 +42,12 @@ public interface IArticleAnalysisRepository
     Task<Briefing?> GetBriefingByDateAsync(DateOnly date, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The nearest briefing dates before and after <paramref name="date"/>,
+    /// for stepping through the archive. Either is null at the ends.
+    /// </summary>
+    Task<(DateOnly? Previous, DateOnly? Next)> GetAdjacentBriefingDatesAsync(DateOnly date, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns the most recently generated briefing regardless of date,
     /// or null if no briefing has ever been generated.
     /// </summary>

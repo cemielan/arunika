@@ -28,7 +28,8 @@ public class DailyBriefingService(
         var rangeStart = date.AddDays(-(WindowDays - 1));
         var (from, to) = ToUtcRange(rangeStart, date);
 
-        var topStories = (await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken))
+        var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
+        var topStories = articles
             .OrderByDescending(article => article.Analysis!.ImpactScore)
             .Take(TopStoryCount)
             .ToList();
@@ -39,15 +40,21 @@ public class DailyBriefingService(
         }
 
         var result = await briefingGenerationService.GenerateAsync(topStories, cancellationToken);
+        var pulse = SentimentTally.From(articles);
 
         var briefing = new Briefing
         {
             Id = Guid.NewGuid(),
             BriefingDate = date,
             ExecutiveSummary = result.ExecutiveSummary,
+            ExecutiveSummaryIndonesian = result.ExecutiveSummaryIndonesian,
             OverallSentiment = result.OverallSentiment,
             RiskLevel = result.RiskLevel,
-            GeneratedAt = DateTimeOffset.UtcNow
+            GeneratedAt = DateTimeOffset.UtcNow,
+            BullishCount = pulse.BullishCount,
+            BearishCount = pulse.BearishCount,
+            NeutralCount = pulse.NeutralCount,
+            AverageImpactScore = pulse.AverageImpactScore
         };
 
         for (var i = 0; i < topStories.Count; i++)
