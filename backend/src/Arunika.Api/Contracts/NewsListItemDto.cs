@@ -13,5 +13,4 @@ public sealed record NewsListItemDto(
     string? Sentiment,
     int? ImpactScore,
     string? Summary,
-    string? SummaryIndonesian,
     int SourceCount);

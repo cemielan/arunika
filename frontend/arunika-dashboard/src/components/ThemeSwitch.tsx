@@ -6,7 +6,7 @@ import { useTheme } from "@heroui/react";
 /**
  * Theme toggle written as words rather than a sun/moon glyph, so the header
  * carries no decorative iconography. Both modes are shown with the current one
- * highlighted, matching LanguageSwitch.
+ * highlighted.
  */
 export function ThemeSwitch({ className = "" }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();

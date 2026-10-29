@@ -1,7 +1,5 @@
 import Link from "next/link";
 import { getNewsFeed, type NewsListItem, type NewsSortBy } from "@/lib/api";
-import { localize, type Language } from "@/lib/language";
-import { getLanguage } from "@/lib/language-server";
 import { buildNewsHref } from "@/lib/newsHref";
 import { NewsFilters } from "@/components/NewsFilters";
 import { NewsPagination } from "@/components/NewsPagination";
@@ -31,8 +29,8 @@ type NewsPageProps = {
  * — serif headlines, rubric datelines, the impact meter — but stays a dense,
  * scannable list, because this is the page people filter and page through.
  */
-function NewsRow({ item, index, language }: { item: NewsListItem; index: number; language: Language }) {
-  const summary = localize(language, item.summary, item.summaryIndonesian);
+function NewsRow({ item, index }: { item: NewsListItem; index: number }) {
+  const summary = item.summary;
 
   return (
     <article
@@ -47,9 +45,9 @@ function NewsRow({ item, index, language }: { item: NewsListItem; index: number;
           <ImpactMeter score={item.impactScore} className="hidden shrink-0 pt-1 sm:flex" />
         </div>
 
-        {summary.text && (
-          <p lang={summary.lang} className="line-clamp-2 max-w-3xl text-sm leading-relaxed text-muted">
-            {summary.text}
+        {summary && (
+          <p className="line-clamp-2 max-w-3xl text-sm leading-relaxed text-muted">
+            {summary}
           </p>
         )}
 
@@ -75,10 +73,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
   const sort: NewsSortBy = sortBy === "impact" ? "impact" : "date";
   const filters = { category, search, from, to, sortBy: sort };
 
-  const [{ items, meta }, language] = await Promise.all([
-    getNewsFeed({ category, search, from, to, sortBy: sort, page }),
-    getLanguage(),
-  ]);
+  const { items, meta } = await getNewsFeed({ category, search, from, to, sortBy: sort, page });
 
   const scope = [
     category ? category : null,
@@ -127,7 +122,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         ) : (
           <div className="border-b border-border">
             {items.map((item, index) => (
-              <NewsRow key={item.id} item={item} index={index} language={language} />
+              <NewsRow key={item.id} item={item} index={index} />
             ))}
           </div>
         )}

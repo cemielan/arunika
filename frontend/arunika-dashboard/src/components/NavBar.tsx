@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@heroui/react";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
-import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useSpringVector } from "@/app/hooks/useSpringVector";
 import { useAuth } from "@/lib/auth-context";
 
@@ -162,7 +161,6 @@ export function NavBar() {
                 Sign In
               </Link>
             )}
-            <LanguageSwitch />
             <ThemeSwitch />
           </div>
 
@@ -222,7 +220,6 @@ export function NavBar() {
                 Sign In
               </Link>
             )}
-            <LanguageSwitch className="self-start" />
             <ThemeSwitch className="self-start" />
           </div>
         </div>

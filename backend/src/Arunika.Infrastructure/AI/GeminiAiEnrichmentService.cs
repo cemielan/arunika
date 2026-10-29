@@ -299,9 +299,7 @@ public class GeminiAiEnrichmentService(
             payload.ImpactRationale,
             sectors,
             payload.Keywords ?? [],
-            modelVersion,
-            payload.SummaryIndonesian,
-            payload.ImpactRationaleIndonesian);
+            modelVersion);
     }
 
     // Structured output is generated in order, so the five rubric components are
@@ -315,8 +313,7 @@ public class GeminiAiEnrichmentService(
         [
             "summary", "category", "sentiment", "sentimentConfidence",
             "breadth", "magnitude", "surprise", "immediacy", "certainty",
-            "impactScore", "impactRationale", "sectors", "keywords",
-            "summaryIndonesian", "impactRationaleIndonesian"
+            "impactScore", "impactRationale", "sectors", "keywords"
         ],
         Properties = new Dictionary<string, Schema>
         {
@@ -361,18 +358,13 @@ public class GeminiAiEnrichmentService(
                 Type = SchemaType.Array,
                 Items = new Schema { Type = SchemaType.String },
                 MaxItems = 8
-            },
-            // Translations ride on the same call: the daily budget counts requests,
-            // not tokens, so a separate translation call would halve throughput.
-            ["summaryIndonesian"] = new Schema { Type = SchemaType.String, Description = "The summary translated into Bahasa Indonesia." },
-            ["impactRationaleIndonesian"] = new Schema { Type = SchemaType.String, Description = "The impactRationale translated into Bahasa Indonesia." }
+            }
         },
         Required =
         [
             "summary", "category", "sentiment",
             "breadth", "magnitude", "surprise", "immediacy", "certainty",
-            "impactScore", "impactRationale",
-            "summaryIndonesian", "impactRationaleIndonesian"
+            "impactScore", "impactRationale"
         ]
     };
 
@@ -389,9 +381,7 @@ public class GeminiAiEnrichmentService(
         int ImpactScore,
         string? ImpactRationale,
         List<GeminiSectorImpactPayload>? Sectors,
-        List<string>? Keywords,
-        string? SummaryIndonesian,
-        string? ImpactRationaleIndonesian);
+        List<string>? Keywords);
 
     private sealed record GeminiSectorImpactPayload(string Sector, string Direction, int Magnitude);
 }

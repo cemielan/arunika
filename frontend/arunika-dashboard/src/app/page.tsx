@@ -3,8 +3,6 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getBriefing, type Briefing } from "@/lib/api";
 import { formatDateOnly } from "@/lib/formatDate";
-import { localize } from "@/lib/language";
-import { getLanguage } from "@/lib/language-server";
 import { MarketPulse } from "@/components/MarketPulse";
 import { StoryColumn, StoryLead, StoryRow } from "@/components/BriefingStories";
 import { PageHeader, Rubric, SectionRule } from "@/components/editorial";
@@ -158,13 +156,10 @@ const DATE_PARAM = /^\d{4}-\d{2}-\d{2}$/;
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const { date } = await searchParams;
-  const [briefing, language] = await Promise.all([
-    // Anything that isn't a plain yyyy-MM-dd falls back to today rather than a 400 from the API.
-    getBriefing(date && DATE_PARAM.test(date) ? date : undefined),
-    getLanguage(),
-  ]);
+  // Anything that isn't a plain yyyy-MM-dd falls back to today rather than a 400 from the API.
+  const briefing = await getBriefing(date && DATE_PARAM.test(date) ? date : undefined);
   const { marketPulse, topStories } = briefing;
-  const executiveSummary = localize(language, briefing.executiveSummary, briefing.executiveSummaryIndonesian);
+  const executiveSummary = briefing.executiveSummary;
 
   const [lead, ...rest] = topStories;
   const columns = rest.slice(0, 3);
@@ -185,9 +180,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         <PageHeader
           kicker={formatMastheadDate(briefing.date) || "Today"}
           meta={`${marketPulse.totalArticles} stories · ${windowNote}`}
-          // "Today's" over a seven-day window confused readers; the title now
-          // names the span the stories actually cover.
-          title={briefing.isArchive ? "From the Archive" : "This Week in Markets"}
+          title={briefing.isArchive ? "From the Archive" : "Today's Briefing"}
           lede={
             briefing.isArchive
               ? "This briefing as it was published that day: the same ranking, summary and market pulse."
@@ -201,9 +194,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         </div>
       </div>
 
-      {(executiveSummary.text || marketPulse.totalArticles > 0) && (
+      {(executiveSummary || marketPulse.totalArticles > 0) && (
         <section className="editorial-reveal grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
-          {executiveSummary.text ? (
+          {executiveSummary ? (
             <div className="flex flex-col gap-4">
               <SectionRule label="The lede" note="AI-generated" />
 
@@ -224,10 +217,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
               </div>
 
               <p
-                lang={executiveSummary.lang}
                 className="editorial-dropcap max-w-[68ch] whitespace-pre-line text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base"
               >
-                {executiveSummary.text}
+                {executiveSummary}
               </p>
             </div>
           ) : (
@@ -256,7 +248,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         <>
           <section className="flex flex-col gap-6">
             <SectionRule label="Lead story" note={`Highest impact of ${marketPulse.totalArticles}`} />
-            <StoryLead story={lead} language={language} />
+            <StoryLead story={lead} />
           </section>
 
           {columns.length > 0 && (
@@ -264,7 +256,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
               <SectionRule label="Also this week" />
               <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
                 {columns.map((story, index) => (
-                  <StoryColumn key={story.articleId} story={story} index={index + 1} language={language} />
+                  <StoryColumn key={story.articleId} story={story} index={index + 1} />
                 ))}
               </div>
             </section>

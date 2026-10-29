@@ -102,8 +102,6 @@ Return a JSON object with these keys, in this order:
 - impactRationale: string in English, the reader-facing "why it matters" note described above
 - sectors: array of { sector: string, direction: "Positive"|"Negative"|"Neutral", magnitude: integer 0-100 }
 - keywords: array of strings, max 8 items
-- summaryIndonesian: the summary translated into Bahasa Indonesia
-- impactRationaleIndonesian: the impactRationale translated into Bahasa Indonesia
 
 Return ONLY valid JSON, no markdown, no explanation.
 """
@@ -151,9 +149,7 @@ Return ONLY valid JSON, no markdown, no explanation.
             payload.ImpactRationale,
             sectors,
             payload.Keywords ?? [],
-            $"openrouter/{model}",
-            payload.SummaryIndonesian,
-            payload.ImpactRationaleIndonesian);
+            $"openrouter/{model}");
     }
 
     private sealed record OpenRouterResponse(
@@ -187,9 +183,7 @@ Return ONLY valid JSON, no markdown, no explanation.
         int ImpactScore,
         string? ImpactRationale,
         List<OpenRouterSectorImpactPayload>? Sectors,
-        List<string>? Keywords,
-        string? SummaryIndonesian,
-        string? ImpactRationaleIndonesian);
+        List<string>? Keywords);
 
     private sealed record OpenRouterSectorImpactPayload(string Sector, string Direction, int Magnitude);
 }

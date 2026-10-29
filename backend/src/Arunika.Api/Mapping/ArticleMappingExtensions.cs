@@ -14,7 +14,6 @@ public static class ArticleMappingExtensions
         article.Analysis?.Sentiment.ToString(),
         article.Analysis?.ImpactScore,
         article.Analysis?.Summary,
-        article.Analysis?.SummaryIndonesian,
         sourceCount);
 
     public static ArticleDetailDto ToDetailDto(this Article article, IReadOnlyList<Article> duplicates) => new(
@@ -39,7 +38,5 @@ public static class ArticleMappingExtensions
         article.DuplicateOfId,
         duplicates
             .Select(duplicate => new DuplicateArticleDto(duplicate.Id, duplicate.Title, duplicate.Source?.Name ?? string.Empty))
-            .ToList(),
-        article.Analysis?.SummaryIndonesian,
-        article.Analysis?.ImpactRationaleIndonesian);
+            .ToList());
 }

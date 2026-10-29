@@ -19,9 +19,7 @@ public record ArticleAnalysisResult(
     string? ImpactRationale,
     IReadOnlyList<SectorImpactResult> Sectors,
     IReadOnlyList<string> Keywords,
-    string ModelVersion,
-    string? SummaryIndonesian = null,
-    string? ImpactRationaleIndonesian = null
+    string ModelVersion
 );
 
 /// <summary>

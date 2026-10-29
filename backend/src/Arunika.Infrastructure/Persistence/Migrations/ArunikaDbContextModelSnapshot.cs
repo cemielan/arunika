@@ -108,9 +108,6 @@ namespace Arunika.Infrastructure.Persistence.Migrations
                     b.Property<string>("ImpactRationale")
                         .HasColumnType("text");
 
-                    b.Property<string>("ImpactRationaleIndonesian")
-                        .HasColumnType("text");
-
                     b.Property<int>("ImpactScore")
                         .HasColumnType("integer");
 
@@ -129,9 +126,6 @@ namespace Arunika.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Summary")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("SummaryIndonesian")
                         .HasColumnType("text");
 
                     b.HasKey("ArticleId");
@@ -199,9 +193,6 @@ namespace Arunika.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("ExecutiveSummary")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ExecutiveSummaryIndonesian")
                         .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("GeneratedAt")

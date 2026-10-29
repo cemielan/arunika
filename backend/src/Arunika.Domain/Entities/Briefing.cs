@@ -7,7 +7,6 @@ public class Briefing
     public Guid Id { get; set; }
     public DateOnly BriefingDate { get; set; }
     public required string ExecutiveSummary { get; set; }
-    public string? ExecutiveSummaryIndonesian { get; set; }
     public Sentiment OverallSentiment { get; set; }
     public RiskLevel RiskLevel { get; set; }
     public DateTimeOffset GeneratedAt { get; set; }

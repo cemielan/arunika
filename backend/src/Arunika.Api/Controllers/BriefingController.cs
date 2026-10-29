@@ -139,8 +139,6 @@ public class BriefingController(
                 article.Source?.Name,
                 article.PublishedAt,
                 article.Analysis!.ImpactRationale,
-                article.Analysis!.SummaryIndonesian,
-                article.Analysis!.ImpactRationaleIndonesian,
                 sourceCounts.GetValueOrDefault(article.Id, 1)))
             .ToList();
 
@@ -151,7 +149,6 @@ public class BriefingController(
             cached?.ExecutiveSummary,
             cached is not null ? cached.OverallSentiment.ToString() : null,
             cached is not null ? cached.RiskLevel.ToString() : null,
-            cached?.ExecutiveSummaryIndonesian,
             isArchive,
             previousDate,
             // Today has no "next": anything later is a future date.

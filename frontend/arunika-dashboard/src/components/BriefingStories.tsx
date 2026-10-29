@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { TopStory } from "@/lib/api";
-import { localize, type Language } from "@/lib/language";
 import {
   Dateline,
   ImpactMeter,
@@ -22,17 +21,17 @@ import {
  * open rather than behind a disclosure: it is the most useful line on the card,
  * and hiding it meant most readers never saw it.
  */
-function WhyItMatters({ story, language }: { story: TopStory; language: Language }) {
-  const rationale = localize(language, story.impactRationale, story.impactRationaleIndonesian);
-  if (!rationale.text) {
+function WhyItMatters({ story }: { story: TopStory }) {
+  const rationale = story.impactRationale;
+  if (!rationale) {
     return null;
   }
 
   return (
     <div className="mt-3 border-l border-border pl-3">
       <Rubric>Why it matters</Rubric>
-      <p lang={rationale.lang} className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-foreground/80">
-        {rationale.text}
+      <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-foreground/80">
+        {rationale}
       </p>
     </div>
   );
@@ -53,8 +52,8 @@ function ReadCue({ label = "Read the story" }: { label?: string }) {
  * imagery — the headline, the excerpt and the rationale are all the visual
  * interest there is.
  */
-export function StoryLead({ story, language }: { story: TopStory; language: Language }) {
-  const summary = localize(language, story.summary, story.summaryIndonesian);
+export function StoryLead({ story }: { story: TopStory }) {
+  const summary = story.summary;
 
   return (
     <article className="editorial-reveal" style={{ animationDelay: "80ms" }}>
@@ -76,13 +75,13 @@ export function StoryLead({ story, language }: { story: TopStory; language: Lang
             className="mt-3"
           />
 
-          {summary.text && (
-            <p lang={summary.lang} className="mt-4 max-w-[68ch] text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
-              {summary.text}
+          {summary && (
+            <p className="mt-4 max-w-[68ch] text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
+              {summary}
             </p>
           )}
 
-          <WhyItMatters story={story} language={language} />
+          <WhyItMatters story={story} />
 
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-4">
             <ImpactMeter score={story.impactScore} />
@@ -105,13 +104,11 @@ export function StoryLead({ story, language }: { story: TopStory; language: Lang
 export function StoryColumn({
   story,
   index,
-  language,
 }: {
   story: TopStory;
   index: number;
-  language: Language;
 }) {
-  const summary = localize(language, story.summary, story.summaryIndonesian);
+  const summary = story.summary;
 
   return (
     <article
@@ -133,13 +130,13 @@ export function StoryColumn({
         </h3>
       </Link>
 
-      {summary.text && (
-        <p lang={summary.lang} className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted">
-          {summary.text}
+      {summary && (
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted">
+          {summary}
         </p>
       )}
 
-      <WhyItMatters story={story} language={language} />
+      <WhyItMatters story={story} />
 
       <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
         <ImpactMeter score={story.impactScore} />

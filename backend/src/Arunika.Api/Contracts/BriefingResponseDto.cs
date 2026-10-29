@@ -20,7 +20,6 @@ public sealed record BriefingResponseDto(
     string? ExecutiveSummary = null,
     string? OverallSentiment = null,
     string? RiskLevel = null,
-    string? ExecutiveSummaryIndonesian = null,
     bool IsArchive = false,
     DateOnly? PreviousBriefingDate = null,
     DateOnly? NextBriefingDate = null);
@@ -42,8 +41,6 @@ public sealed record TopStoryDto(
     string? Source = null,
     DateTimeOffset? PublishedAt = null,
     string? ImpactRationale = null,
-    string? SummaryIndonesian = null,
-    string? ImpactRationaleIndonesian = null,
     int SourceCount = 1);
 
 /// <summary>

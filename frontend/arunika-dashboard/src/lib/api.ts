@@ -48,7 +48,6 @@ export type NewsListItem = {
   sentiment: string | null;
   impactScore: number | null;
   summary: string | null;
-  summaryIndonesian: string | null;
   /** Distinct outlets that carried the story, counting linked duplicates. */
   sourceCount: number;
 };
@@ -82,8 +81,6 @@ export type ArticleDetail = {
   keywords: string[];
   duplicateOfId: string | null;
   duplicates: DuplicateArticle[];
-  summaryIndonesian: string | null;
-  impactRationaleIndonesian: string | null;
 };
 
 export type TopStory = {
@@ -99,8 +96,6 @@ export type TopStory = {
   publishedAt: string | null;
   /** AI rationale for the impact score, shown as "Why it matters" on the lead story. */
   impactRationale: string | null;
-  summaryIndonesian: string | null;
-  impactRationaleIndonesian: string | null;
   /** Distinct outlets that carried the story, counting linked duplicates. */
   sourceCount: number;
 };
@@ -138,7 +133,6 @@ export type Briefing = {
   overallSentiment?: string;
   /** AI-generated risk level (when GenerateDailyBriefingJob has run). */
   riskLevel?: string;
-  executiveSummaryIndonesian?: string;
   /** A past day's briefing, served with the stories and pulse stored that day. */
   isArchive: boolean;
   /** Nearest briefing dates either side of `date`, for stepping through the archive. */
@@ -222,7 +216,6 @@ type RawBriefing = {
   executiveSummary?: string;
   overallSentiment?: string;
   riskLevel?: string;
-  executiveSummaryIndonesian?: string;
   isArchive?: boolean;
   previousBriefingDate?: string | null;
   nextBriefingDate?: string | null;
@@ -246,8 +239,6 @@ function normalizeTopStory(story: RawTopStory): TopStory {
     source: story.source ?? null,
     publishedAt: story.publishedAt ?? null,
     impactRationale: story.impactRationale ?? null,
-    summaryIndonesian: story.summaryIndonesian ?? null,
-    impactRationaleIndonesian: story.impactRationaleIndonesian ?? null,
     sourceCount: story.sourceCount ?? 1,
   };
 }
@@ -294,7 +285,6 @@ export const getBriefing = unstable_cache(
       executiveSummary,
       overallSentiment,
       riskLevel,
-      executiveSummaryIndonesian,
       isArchive,
       previousBriefingDate,
       nextBriefingDate,
@@ -306,7 +296,6 @@ export const getBriefing = unstable_cache(
       executiveSummary,
       overallSentiment,
       riskLevel,
-      executiveSummaryIndonesian,
       isArchive: isArchive ?? false,
       previousBriefingDate: previousBriefingDate ?? null,
       nextBriefingDate: nextBriefingDate ?? null,

@@ -6,8 +6,7 @@ namespace Arunika.Application.Abstractions;
 public record BriefingGenerationResult(
     string ExecutiveSummary,
     Sentiment OverallSentiment,
-    RiskLevel RiskLevel,
-    string? ExecutiveSummaryIndonesian = null
+    RiskLevel RiskLevel
 );
 
 public interface IBriefingGenerationService

@@ -36,13 +36,11 @@ public class ArticleAnalysisRepository(ArunikaDbContext dbContext) : IArticleAna
             {
                 ArticleId = articleId,
                 Summary = result.Summary,
-                SummaryIndonesian = result.SummaryIndonesian,
                 CategoryId = categoryId.Value,
                 Sentiment = result.Sentiment,
                 SentimentConfidence = result.SentimentConfidence,
                 ImpactScore = result.ImpactScore,
                 ImpactRationale = result.ImpactRationale,
-                ImpactRationaleIndonesian = result.ImpactRationaleIndonesian,
                 ModelVersion = result.ModelVersion,
                 GeneratedAt = DateTimeOffset.UtcNow
             });

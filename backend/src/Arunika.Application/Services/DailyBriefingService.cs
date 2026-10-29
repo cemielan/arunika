@@ -44,7 +44,6 @@ public class DailyBriefingService(
             Id = Guid.NewGuid(),
             BriefingDate = date,
             ExecutiveSummary = result.ExecutiveSummary,
-            ExecutiveSummaryIndonesian = result.ExecutiveSummaryIndonesian,
             OverallSentiment = result.OverallSentiment,
             RiskLevel = result.RiskLevel,
             GeneratedAt = DateTimeOffset.UtcNow,
