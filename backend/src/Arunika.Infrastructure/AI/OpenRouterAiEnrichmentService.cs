@@ -99,7 +99,7 @@ Return a JSON object with these keys, in this order:
 - immediacy: integer 0-15
 - certainty: integer 0-15
 - impactScore: integer 0-100, the exact sum of the five components above
-- impactRationale: string in English explaining the score
+- impactRationale: string in English, the reader-facing "why it matters" note described above
 - sectors: array of { sector: string, direction: "Positive"|"Negative"|"Neutral", magnitude: integer 0-100 }
 - keywords: array of strings, max 8 items
 - summaryIndonesian: the summary translated into Bahasa Indonesia

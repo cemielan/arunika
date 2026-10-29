@@ -4,9 +4,9 @@ import { startTransition, useEffect, useState } from "react";
 import { useTheme } from "@heroui/react";
 
 /**
- * Theme toggle written as a word rather than a sun/moon glyph, so the header
- * carries no decorative iconography. The label names the mode you will get,
- * which is also less ambiguous than the icon it replaces.
+ * Theme toggle written as words rather than a sun/moon glyph, so the header
+ * carries no decorative iconography. Both modes are shown with the current one
+ * highlighted, matching LanguageSwitch.
  */
 export function ThemeSwitch({ className = "" }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -30,16 +30,9 @@ export function ThemeSwitch({ className = "" }: { className?: string }) {
       // without growing the visible label or shifting surrounding layout.
       className={`editorial-rubric -m-2 p-2 text-muted transition-colors hover:text-foreground ${className}`}
     >
-      {/*
-        Reserve the width of the longer word so the header does not reflow when
-        the label swaps; `invisible` keeps it out of the accessibility tree.
-      */}
-      <span className="relative inline-grid">
-        <span className="invisible col-start-1 row-start-1" aria-hidden>
-          Light
-        </span>
-        <span className="col-start-1 row-start-1 text-left">{isDark ? "Light" : "Dark"}</span>
-      </span>
+      <span className={mounted && isDark ? "text-foreground" : undefined}>Dark</span>
+      <span className="mx-1 opacity-50">/</span>
+      <span className={mounted && !isDark ? "text-foreground" : undefined}>Light</span>
     </button>
   );
 }

@@ -29,10 +29,7 @@ public class DailyBriefingService(
         var (from, to) = ToUtcRange(rangeStart, date);
 
         var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
-        var topStories = articles
-            .OrderByDescending(article => article.Analysis!.ImpactScore)
-            .Take(TopStoryCount)
-            .ToList();
+        var topStories = TopStorySelector.Select(articles, TopStoryCount);
 
         if (topStories.Count == 0)
         {

@@ -6,6 +6,18 @@
   --font-serif: var(--font-serif), ui-serif, Georgia, "Times New Roman", serif;
 }
 
+/*
+ * Dark theme softened from HeroUI's near-black. Pure white on near-black makes
+ * high-contrast serif headlines glow and blur (halation), worst for readers
+ * with astigmatism; off-black/off-white keeps contrast well above WCAG AA.
+ * Unlayered, so it wins over the theme's own layered variables.
+ */
+.dark,
+[data-theme="dark"] {
+  --background: #141416;
+  --foreground: #e8e8ea;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -23,18 +35,30 @@ body {
 .editorial-display {
   font-family: var(--font-serif), ui-serif, Georgia, "Times New Roman", serif;
   font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.12;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
   text-wrap: balance;
 }
 
-/* Small-caps rubric: "TODAY'S BRIEFING", "ALSO THIS WEEK", section kickers. */
+/*
+ * Small-caps rubric: section labels and navigation only. Tracked capitals read
+ * slower than mixed case, so they're kept for the few words that structure the
+ * page; data (source, time, sentiment) uses .editorial-meta instead.
+ */
 .editorial-rubric {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1;
+}
+
+/* Sentence-case metadata: datelines, sentiment, scores. */
+.editorial-meta {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
 }
 
 /*

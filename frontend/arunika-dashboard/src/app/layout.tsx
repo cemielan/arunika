@@ -60,7 +60,7 @@ export const viewport: Viewport = {
   // sitting on a fixed colour.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5f5f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#060607" },
+    { media: "(prefers-color-scheme: dark)", color: "#141416" },
   ],
   // Let the installed app draw behind the iOS status bar / Android system bars.
   viewportFit: "cover",

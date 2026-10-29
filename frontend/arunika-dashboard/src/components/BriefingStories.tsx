@@ -17,7 +17,11 @@ import {
  * list.
  */
 
-/** Native-disclosure "Why it matters", carrying the AI impact rationale. */
+/**
+ * "Why it matters", the AI's reader-facing note on market consequences. Shown
+ * open rather than behind a disclosure: it is the most useful line on the card,
+ * and hiding it meant most readers never saw it.
+ */
 function WhyItMatters({ story, language }: { story: TopStory; language: Language }) {
   const rationale = localize(language, story.impactRationale, story.impactRationaleIndonesian);
   if (!rationale.text) {
@@ -25,15 +29,12 @@ function WhyItMatters({ story, language }: { story: TopStory; language: Language
   }
 
   return (
-    <details className="editorial-disclosure mt-3">
-      <summary className="-my-2 inline-flex items-center gap-1.5 py-2 text-muted transition-colors hover:text-foreground">
-        <span className="editorial-disclosure-sign inline-block leading-none">+</span>
-        <Rubric>Why it matters</Rubric>
-      </summary>
-      <p lang={rationale.lang} className="mt-2 border-l border-border pl-3 text-sm leading-relaxed text-muted">
+    <div className="mt-3 border-l border-border pl-3">
+      <Rubric>Why it matters</Rubric>
+      <p lang={rationale.lang} className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-foreground/80">
         {rationale.text}
       </p>
-    </details>
+    </div>
   );
 }
 
@@ -76,7 +77,7 @@ export function StoryLead({ story, language }: { story: TopStory; language: Lang
           />
 
           {summary.text && (
-            <p lang={summary.lang} className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
+            <p lang={summary.lang} className="mt-4 max-w-[68ch] text-[0.9375rem] leading-relaxed text-foreground/85 sm:text-base">
               {summary.text}
             </p>
           )}
@@ -88,7 +89,7 @@ export function StoryLead({ story, language }: { story: TopStory; language: Lang
             <SentimentMark sentiment={story.sentiment} />
             <SourceCount count={story.sourceCount} />
             {story.sectors.slice(0, 3).map((sector) => (
-              <Rubric key={sector}>{sector}</Rubric>
+              <span key={sector} className="editorial-meta text-muted">{sector}</span>
             ))}
             <Link href={`/news/${story.articleId}`} className="group ml-auto">
               <ReadCue />
@@ -133,7 +134,7 @@ export function StoryColumn({
       </Link>
 
       {summary.text && (
-        <p lang={summary.lang} className="mt-3 line-clamp-4 text-sm leading-relaxed text-muted">
+        <p lang={summary.lang} className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted">
           {summary.text}
         </p>
       )}

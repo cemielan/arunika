@@ -17,23 +17,6 @@ const NAV_LINKS = [
 ];
 
 /**
- * Signed-in state, set in the same small-caps rubric as every other item in the
- * bar. It replaces the address itself, which sat at a smaller size and plainer
- * tracking than its neighbours and read as a stray piece of text rather than
- * part of the masthead. The dot is aria-hidden — the label beside it already
- * carries the state — and the address moves to title=, still one hover away for
- * anyone checking which account they are on.
- */
-function SignedInIndicator({ email }: { email?: string }) {
-  return (
-    <span className="flex items-center gap-2" title={email}>
-      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-success" />
-      <span className="editorial-rubric text-muted">Signed in</span>
-    </span>
-  );
-}
-
-/**
  * Masthead bar. Navigation is set in the same small-caps rubric as the section
  * rules below it, and the active item is marked by a rule that slides between
  * labels — the pill-and-icon treatment it replaces read as a generic app
@@ -161,9 +144,11 @@ export function NavBar() {
           <div className="hidden min-w-0 items-center gap-5 md:flex">
             {!ready ? null : isAuthenticated ? (
               <>
-                <SignedInIndicator email={user?.email} />
+                {/* No separate "signed in" label: it looked clickable but wasn't,
+                    and Logout already implies the state. The account shows on hover. */}
                 <button
                   onClick={handleLogout}
+                  title={user?.email ? `Signed in as ${user.email}` : undefined}
                   className="editorial-rubric text-muted transition-colors hover:text-foreground"
                 >
                   Logout
@@ -220,7 +205,7 @@ export function NavBar() {
           <div className="flex flex-col gap-3 pt-4">
             {!ready ? null : isAuthenticated ? (
               <>
-                <SignedInIndicator email={user?.email} />
+                {user?.email && <span className="editorial-meta text-muted">{user.email}</span>}
                 <button
                   onClick={handleLogout}
                   className="editorial-rubric -mx-2 self-start px-2 py-2 text-muted transition-colors hover:text-foreground"

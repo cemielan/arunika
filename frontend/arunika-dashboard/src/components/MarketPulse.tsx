@@ -45,16 +45,19 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className={`editorial-display text-3xl ${TONE[pulse.sentiment]}`}>{pulse.sentiment}</p>
-          <Rubric className="mt-2 block">
-            {pulse.confidence}% of {pulse.totalArticles} stories
-          </Rubric>
+          <p className="editorial-meta mt-2 text-muted">
+            {pulse.confidence}% of {pulse.totalArticles} stories are {pulse.sentiment.toLowerCase()}
+          </p>
         </div>
 
-        <div className="text-right">
+        {/* A separate metric from the sentiment call: how much the window's
+            news moves markets on average, whichever direction it points. */}
+        <div className="text-right" title="Average market impact score of every story in the window, 0–100">
           <p className="editorial-display text-3xl tabular-nums text-foreground">
             {pulse.averageImpact}
+            <span className="text-base text-muted">/100</span>
           </p>
-          <Rubric className="mt-1 block">Avg. impact</Rubric>
+          <p className="editorial-meta mt-2 text-muted">Avg. impact</p>
         </div>
       </div>
 
@@ -85,7 +88,7 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
             <dt>
               <SentimentMark sentiment={row.key} />
             </dt>
-            <dd className="ml-auto font-mono text-xs tabular-nums text-foreground">{row.count}</dd>
+            <dd className="editorial-meta ml-auto tabular-nums text-foreground">{row.count}</dd>
           </div>
         ))}
       </dl>

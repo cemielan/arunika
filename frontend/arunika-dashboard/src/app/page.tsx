@@ -46,10 +46,10 @@ function Colophon({ windowDays }: { windowDays: number }) {
     // .editorial-reveal, and their entrance animation gives each one its own
     // stacking context, so a z-index set inside this one can't reach past them.
     // Lifting the whole disclosure is what keeps the open panel above the lede.
-    <div className="editorial-reveal relative z-30 -mt-6 sm:-mt-10">
+    <div className="relative z-30">
       <details className="editorial-disclosure group relative inline-block">
-        <summary className="inline-flex items-center gap-2 border border-accent/45 bg-accent/8 px-3.5 py-2 text-accent transition-colors hover:border-accent hover:bg-accent/15">
-          <Rubric className="text-accent!">How this briefing is made</Rubric>
+        <summary className="-my-2 inline-flex items-center gap-1.5 py-2 text-muted transition-colors hover:text-foreground">
+          <Rubric className="text-inherit!">How this briefing is made</Rubric>
           <span className="editorial-disclosure-sign inline-block leading-none">+</span>
         </summary>
 
@@ -70,7 +70,8 @@ function Colophon({ windowDays }: { windowDays: number }) {
             </p>
             <p className="mt-2">
               <strong className="font-medium text-foreground">Two -</strong> Each story is
-              scored 0–100 for market impact, and the {TOP_STORY_COUNT} highest are kept.
+              scored 0–100 for market impact. Stories about the same event are grouped,
+              and the {TOP_STORY_COUNT} highest are kept.
             </p>
             <p className="mt-2">
               <strong className="font-medium text-foreground">Three -</strong>  AI writes the
@@ -128,7 +129,7 @@ function ArchivePager({ briefing }: { briefing: Briefing }) {
   }
 
   return (
-    <nav aria-label="Briefing archive" className="flex items-center justify-between gap-4">
+    <nav aria-label="Briefing archive" className="flex items-center gap-6">
       {previousBriefingDate ? (
         <Link href={`/?date=${previousBriefingDate}`} className="group inline-flex items-center gap-2 text-muted transition-colors hover:text-foreground">
           <span className="inline-block leading-none">&larr;</span>
@@ -178,20 +179,27 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
-      <PageHeader
-        kicker={formatMastheadDate(briefing.date) || "Today"}
-        meta={`${marketPulse.totalArticles} stories · ${windowNote}`}
-        title={briefing.isArchive ? "From the Archive" : "Today's Briefing"}
-        lede={
-          briefing.isArchive
-            ? "This briefing as it was published that day: the same ranking, summary and market pulse."
-            : `The ${TOP_STORY_COUNT} highest-impact stories from the last ${windowDays} days of the news feed, ranked and summarised by AI. Rebuilt every morning.`
-        }
-      />
+      {/* Header, archive pager and colophon form one block, so the controls
+          read as belonging to the masthead instead of floating below it. */}
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          kicker={formatMastheadDate(briefing.date) || "Today"}
+          meta={`${marketPulse.totalArticles} stories · ${windowNote}`}
+          // "Today's" over a seven-day window confused readers; the title now
+          // names the span the stories actually cover.
+          title={briefing.isArchive ? "From the Archive" : "This Week in Markets"}
+          lede={
+            briefing.isArchive
+              ? "This briefing as it was published that day: the same ranking, summary and market pulse."
+              : `The ${TOP_STORY_COUNT} highest-impact stories of the past ${windowDays} days, ranked and summarised by AI. Rebuilt every morning.`
+          }
+        />
 
-      <ArchivePager briefing={briefing} />
-
-      <Colophon windowDays={windowDays} />
+        <div className="editorial-reveal relative z-30 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-border pt-4">
+          <ArchivePager briefing={briefing} />
+          <Colophon windowDays={windowDays} />
+        </div>
+      </div>
 
       {(executiveSummary.text || marketPulse.totalArticles > 0) && (
         <section className="editorial-reveal grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
@@ -217,7 +225,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
 
               <p
                 lang={executiveSummary.lang}
-                className="editorial-dropcap whitespace-pre-line text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base"
+                className="editorial-dropcap max-w-[68ch] whitespace-pre-line text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base"
               >
                 {executiveSummary.text}
               </p>

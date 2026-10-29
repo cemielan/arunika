@@ -89,8 +89,11 @@ public static class ImpactScoringRubric
         correct; a total that is a multiple of 5 should occur only by arithmetic
         coincidence.
 
-        Write impactRationale after the score. One or two sentences, naming the two
-        components that dominated the total and why.
+        Write impactRationale after the score. It is shown to readers as "Why it
+        matters": one or two plain sentences on what this means for markets - which
+        assets, sectors or prices are affected, in which direction, and what to watch
+        next. Do not mention the score, the rubric or component names (breadth,
+        magnitude, surprise, immediacy, certainty).
 
         Each entry in sectors carries its own magnitude, 0-100. Score it the same way,
         but confined to that one sector: how far that sector alone is likely to move.

@@ -340,7 +340,7 @@ public class GeminiAiEnrichmentService(
                 Maximum = 100,
                 Description = "The exact sum of breadth, magnitude, surprise, immediacy and certainty. Never rounded to a multiple of 5 or 10."
             },
-            ["impactRationale"] = new Schema { Type = SchemaType.String, Description = "One or two sentences in English naming the two components that dominated the score." },
+            ["impactRationale"] = new Schema { Type = SchemaType.String, Description = "One or two sentences in English for readers: what this means for markets and what to watch. No scoring terms." },
             ["sectors"] = new Schema
             {
                 Type = SchemaType.Array,

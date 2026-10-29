@@ -10,9 +10,10 @@ function readLanguageCookie(): Language {
 }
 
 /**
- * Switches the AI-written text between English and Bahasa Indonesia. Like
- * ThemeSwitch, the label names the language you will get. The pages read the
- * cookie on the server, so a refresh re-renders them in the new language.
+ * Switches the AI-written text between English and Bahasa Indonesia. Shows
+ * both options with the current one highlighted: a single word left readers
+ * unsure whether it named the current language or the one they'd get. The
+ * pages read the cookie on the server, so a refresh re-renders them.
  */
 export function LanguageSwitch({ className = "" }: { className?: string }) {
   const router = useRouter();
@@ -39,15 +40,9 @@ export function LanguageSwitch({ className = "" }: { className?: string }) {
       onClick={handleClick}
       className={`editorial-rubric -m-2 p-2 text-muted transition-colors hover:text-foreground ${className}`}
     >
-      {/* Reserve the longer label's width so the header doesn't reflow on swap. */}
-      <span className="relative inline-grid">
-        <span className="invisible col-start-1 row-start-1" aria-hidden>
-          Indonesia
-        </span>
-        <span className="col-start-1 row-start-1 text-left">
-          {next === "id" ? "Indonesia" : "English"}
-        </span>
-      </span>
+      <span className={language === "en" ? "text-foreground" : undefined}>EN</span>
+      <span className="mx-1 opacity-50">/</span>
+      <span className={language === "id" ? "text-foreground" : undefined}>ID</span>
     </button>
   );
 }

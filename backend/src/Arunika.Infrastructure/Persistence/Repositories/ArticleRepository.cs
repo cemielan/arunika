@@ -141,6 +141,10 @@ public class ArticleRepository(ArunikaDbContext dbContext) : IArticleRepository
             .Include(a => a.Source)
             .Include(a => a.SectorImpacts)
                 .ThenInclude(impact => impact.Sector)
+            // Keywords group same-event stories in TopStorySelector.
+            .Include(a => a.Keywords)
+                .ThenInclude(k => k.Keyword)
+            .AsSplitQuery()
             // Ties have to break on something stable. Ordering on the score alone
             // leaves tied rows in whatever order the query plan produces, and the
             // briefing then takes the top ten off that list — so which stories made

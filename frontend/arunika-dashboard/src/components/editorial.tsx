@@ -100,8 +100,9 @@ export function Ordinal({ index, className = "" }: { index: number; className?: 
 }
 
 /**
- * Magnitude mark for a single value: one hue, thin, rounded, and always shown
- * next to its own number so the score is never carried by the bar alone.
+ * Magnitude mark for a single value: thin, rounded, and always shown next to
+ * its own number out of 100 so the scale is explicit. Neutral rather than the
+ * accent blue, which is reserved for links so colour keeps one meaning.
  */
 export function ImpactMeter({
   score,
@@ -137,7 +138,7 @@ export function ImpactMeter({
       }
       aria-hidden
     >
-      <div className="h-full rounded-full bg-accent" style={{ width: `${clamped}%` }} />
+      <div className="h-full rounded-full bg-foreground/70" style={{ width: `${clamped}%` }} />
     </div>
   );
 
@@ -146,10 +147,13 @@ export function ImpactMeter({
   }
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`} title="Market impact score, 0–100">
       <Rubric>Impact</Rubric>
       {bar}
-      <span className="font-mono text-xs tabular-nums text-foreground">{clamped}</span>
+      <span className="editorial-meta tabular-nums text-foreground">
+        {clamped}
+        <span className="text-muted">/100</span>
+      </span>
     </div>
   );
 }
@@ -171,7 +175,7 @@ export function SentimentMark({
   return (
     <span className={`inline-flex items-center gap-1 ${tone} ${className}`}>
       <Icon className="size-3.5 shrink-0" />
-      <span className="editorial-rubric">{sentiment}</span>
+      <span className="editorial-meta font-semibold">{sentiment}</span>
     </span>
   );
 }
@@ -186,9 +190,9 @@ export function SourceCount({ count, className = "" }: { count: number; classNam
   }
 
   return (
-    <Rubric className={className}>
-      <span className="font-mono text-foreground">{count}</span> sources
-    </Rubric>
+    <span className={`editorial-meta text-muted ${className}`}>
+      <span className="text-foreground">{count}</span> sources
+    </span>
   );
 }
 
@@ -219,7 +223,7 @@ export function Dateline({
   }
 
   return (
-    <p className={`editorial-rubric text-muted ${className}`}>
+    <p className={`editorial-meta text-muted ${className}`}>
       {parts.map((part, index) => (
         <span key={`${part}-${index}`}>
           {index > 0 && <span className="mx-1.5 opacity-50">&middot;</span>}

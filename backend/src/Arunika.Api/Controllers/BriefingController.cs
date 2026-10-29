@@ -115,12 +115,8 @@ public class BriefingController(
         {
             var articles = await articleRepository.GetEnrichedArticlesInRangeAsync(from, to, cancellationToken);
 
-            storyArticles = articles
-                .OrderByDescending(article => article.Analysis!.ImpactScore)
-                .ThenByDescending(article => article.PublishedAt)
-                .ThenBy(article => article.Id)
-                .Take(TopStoryCount)
-                .ToList();
+            // Repository already returns articles in ranking order.
+            storyArticles = TopStorySelector.Select(articles, TopStoryCount);
 
             marketPulse = BuildMarketPulse(SentimentTally.From(articles));
         }

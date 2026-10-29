@@ -66,12 +66,10 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
           <ImpactMeter score={article.impactScore} />
           <SentimentMark sentiment={article.sentiment} />
           {article.sentimentConfidence !== null && (
-            <Rubric>
-              Confidence{" "}
-              <span className="font-mono text-foreground">
-                {Math.round(article.sentimentConfidence * 100)}%
-              </span>
-            </Rubric>
+            <span className="editorial-meta text-muted" title="How sure the AI is of the bullish / bearish / neutral call">
+              Sentiment confidence{" "}
+              <span className="text-foreground">{Math.round(article.sentimentConfidence * 100)}%</span>
+            </span>
           )}
           <a
             href={article.url}
@@ -96,7 +94,7 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
       {summary.text && (
         <section className="editorial-reveal flex flex-col gap-4" style={{ animationDelay: "80ms" }}>
           <SectionRule label="Summary" />
-          <p lang={summary.lang} className="editorial-dropcap text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base">
+          <p lang={summary.lang} className="editorial-dropcap max-w-[68ch] text-[0.9375rem] leading-[1.75] text-foreground/90 sm:text-base">
             {summary.text}
           </p>
         </section>
@@ -105,7 +103,7 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
       {rationale.text && (
         <section className="editorial-reveal flex flex-col gap-4" style={{ animationDelay: "120ms" }}>
           <SectionRule label="Why it matters" />
-          <p lang={rationale.lang} className="border-l border-border pl-4 text-[0.9375rem] leading-relaxed text-muted sm:text-base">
+          <p lang={rationale.lang} className="max-w-[68ch] border-l border-border pl-4 text-[0.9375rem] leading-relaxed text-foreground/80 sm:text-base">
             {rationale.text}
           </p>
         </section>
@@ -139,10 +137,12 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
         <section className="editorial-reveal flex flex-col gap-4" style={{ animationDelay: "200ms" }}>
           <SectionRule label="Keywords" />
           <div className="flex flex-wrap gap-2">
+            {/* Bordered tags look like buttons, so they now behave like one:
+                each opens the feed searched for that keyword. */}
             {article.keywords.map((keyword) => (
-              <span key={keyword} className="editorial-tag cursor-default">
+              <Link key={keyword} href={`/news?search=${encodeURIComponent(keyword)}`} className="editorial-tag">
                 {keyword}
-              </span>
+              </Link>
             ))}
           </div>
         </section>
