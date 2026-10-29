@@ -112,7 +112,7 @@ public class FetchNewsJob(
 
             if (duplicateOf is not null)
             {
-                logger.LogInformation("{Source}: '{Title}' c of {DuplicateOfId}, skipping enrichment.",
+                logger.LogInformation("{Source}: '{Title}' is a duplicate of {DuplicateOfId}, skipping enrichment.",
                     fetcher.SourceName, item.Title, duplicateOf.Id);
             }
             else
