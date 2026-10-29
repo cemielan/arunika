@@ -1,4 +1,5 @@
 using Arunika.Infrastructure.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -153,6 +154,30 @@ public class GeminiQuotaTests
 
         Assert.Equal(5, budget.MinuteLimit);
         Assert.Equal(20, budget.DailyLimit);
+    }
+
+    [Fact]
+    public void ShippedConfig_GivesEveryChainModelItsOwnQuota()
+    {
+        // Bound exactly as DependencyInjection does. The binder appends JSON list
+        // items to the code defaults rather than replacing them, so a model retired
+        // from only one of the two places silently stays in the chain.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "src", "Arunika.Api", "appsettings.json")))
+        {
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(dir);
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(dir.FullName, "src", "Arunika.Api", "appsettings.json"))
+            .Build();
+        var options = new GeminiOptions();
+        configuration.GetSection(GeminiOptions.SectionName).Bind(options);
+
+        var chain = Rotator(options).Chain;
+
+        Assert.Equal(chain.Order(), options.ModelQuotas.Keys.Order());
     }
 
     [Fact]

@@ -30,9 +30,7 @@ public class GeminiOptions
         "gemini-3.1-flash-lite",
         "gemini-2.5-flash-lite",
         "gemini-3.6-flash",
-        "gemini-3.5-flash",
         "gemini-3-flash",
-        "gemini-3.7-flash",
         "gemini-3.8-flash",
         "gemini-2.5-flash",
     ];
@@ -46,9 +44,7 @@ public class GeminiOptions
         ["gemini-3.1-flash-lite"] = new ModelQuota { Rpm = 15, Tpm = 250_000, Rpd = 500 },
         ["gemini-3.5-flash-lite"] = new ModelQuota { Rpm = 15, Tpm = 250_000, Rpd = 500 },
         ["gemini-2.5-flash-lite"] = new ModelQuota { Rpm = 10, Tpm = 250_000, Rpd = 20 },
-        ["gemini-3.7-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
         ["gemini-3.6-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
-        ["gemini-3.5-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
         ["gemini-3-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
         ["gemini-2.5-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
         ["gemini-3.8-flash"] = new ModelQuota { Rpm = 5, Tpm = 250_000, Rpd = 20 },
@@ -78,7 +74,7 @@ public class GeminiOptions
 
     /// <summary>
     /// Attempts per model before falling through to the next one. Kept low on
-    /// purpose: every attempt spends daily quota, and across a nine-model chain a
+    /// purpose: every attempt spends daily quota, and across a seven-model chain a
     /// generous retry count multiplies one bad article into dozens of requests.
     /// </summary>
     public int MaxAttemptsPerModel { get; set; } = 2;
