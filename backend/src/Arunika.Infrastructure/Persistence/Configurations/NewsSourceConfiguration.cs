@@ -28,7 +28,9 @@ public class NewsSourceConfiguration : IEntityTypeConfiguration<NewsSource>
     // (Article.SourceId is FK-restricted), but they are seeded inactive and have
     // no fetcher registered in DependencyInjection.
     public static readonly Guid YahooFinance = new("33333333-0000-0000-0000-000000000004");       // 70, dropped
-    public static readonly Guid Gdelt = new("33333333-0000-0000-0000-000000000007");              // 60, dropped
+    // GDELT's fetcher is registered again (DependencyInjection). Its seed row still
+    // says IsActive = false, but FetchNewsJob looks sources up by name only.
+    public static readonly Guid Gdelt = new("33333333-0000-0000-0000-000000000007");              // 60
 
     public void Configure(EntityTypeBuilder<NewsSource> builder)
     {

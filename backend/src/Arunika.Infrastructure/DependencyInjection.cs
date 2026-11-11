@@ -5,6 +5,7 @@ using Arunika.Infrastructure.Auth;
 using Arunika.Infrastructure.BackgroundJobs;
 using Arunika.Infrastructure.Email;
 using Arunika.Infrastructure.News.FinancialModelingPrep;
+using Arunika.Infrastructure.News.Gdelt;
 using Arunika.Infrastructure.News.Rss;
 using Arunika.Infrastructure.Persistence;
 using Arunika.Infrastructure.Persistence.Repositories;
@@ -94,6 +95,14 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(baseUrl);
         });
 
+        // GDELT is the high-volume source (up to 75 items per run). It was dropped
+        // on 2026-09-11 and restored after daily ingestion fell from ~1000 to ~40.
+        services.AddHttpClient<INewsFetcher, GdeltNewsFetcher>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.gdeltproject.org/api/v2/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
         foreach (var (sourceName, feedUrl) in RssFeeds)
         {
             RegisterRssFeed(services, sourceName, feedUrl);
@@ -150,7 +159,7 @@ public static class DependencyInjection
         // Dropped sources, all still seeded but inactive so their existing
         // articles keep a valid SourceId: Reuters Business/Markets News (82 —
         // feeds.reuters.com was retired and no longer resolves), Yahoo Finance
-        // (70) and GDELT (60) as the lowest-trust feeds, and Nasdaq Markets
+        // (70 — its RSS endpoints return 404 as of 2026-11-11), and Nasdaq Markets
         // (70), Investing.com (65) and Seeking Alpha (60), which were never
         // seeded at all.
     ];
